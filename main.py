@@ -647,6 +647,13 @@ def home():
     return {"status": "ok"}
 
 
+@app.get("/favicon.ico")
+def favicon():
+    # Tarayıcı varsayılan /favicon.ico isteğini SVG favicon'a yönlendirir
+    # (sayfa head'lerinde ayrıca <link rel="icon"> tanımlıdır).
+    return RedirectResponse(url="/static/favicon.svg")
+
+
 @app.get("/product-context")
 def product_context(url: str):
     query = slug_to_query(url)

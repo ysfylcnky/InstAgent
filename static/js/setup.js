@@ -1,5 +1,5 @@
 /* =====================================================
-   WhatsAgent · Kurulum (Setup) sihirbazı
+   InstaAgent · Kurulum (Setup) sihirbazı
    /admin/settings/setup uçlarını tüketir. Alan şeması backend'den,
    etiket/yardım metinleri burada (backend yalın kalsın).
 ===================================================== */
@@ -142,7 +142,7 @@ const Setup = {
             <div class="first-run">
                 <div class="ico"><i class="fa-solid fa-hand-sparkles"></i></div>
                 <div>
-                    <h2>WhatsAgent'a hoş geldin 👋</h2>
+                    <h2>InstaAgent'a hoş geldin 👋</h2>
                     <p>Panoyu kullanmaya başlamadan önce entegrasyonlarını bağlaman gerekiyor.
                        Aşağıdaki <strong>zorunlu</strong> bölümleri doldurup test et, ardından
                        <strong>Kurulumu Tamamla</strong>'ya bas — sonra panel otomatik açılır.</p>

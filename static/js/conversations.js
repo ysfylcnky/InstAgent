@@ -1,5 +1,5 @@
 /* =====================================================
-   WhatsAgent · Conversations sayfası
+   InstaAgent · Conversations sayfası
    Sol: müşteri listesi (sayfalı) — Sağ: mesaj detayı (sayfalı)
 ===================================================== */
 

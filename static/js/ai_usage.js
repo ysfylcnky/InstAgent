@@ -1,5 +1,5 @@
 /* =====================================================
-   WhatsAgent · AI Usage sayfası
+   InstaAgent · AI Usage sayfası
    usage_logs üzerinden model bazlı detaylı analiz
 ===================================================== */
 

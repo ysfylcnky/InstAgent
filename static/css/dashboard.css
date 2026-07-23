@@ -1,5 +1,5 @@
 ﻿/* ===================================================
-   WhatsAgent · Command Center  (Aurora Dark UI)
+   InstaAgent · Command Center  (Aurora Dark UI)
 ===================================================*/
 
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
@@ -17,11 +17,21 @@
     --faint:#5A6178;
 
     --green:#25D366;
-    --violet:#8B7CFF;
+    --violet:#C13584;
     --cyan:#22D3EE;
     --amber:#FBBF24;
-    --pink:#F472B6;
+    --pink:#E1306C;
     --red:#FB7185;
+
+    /* Instagram marka paleti + imza gradyanı */
+    --ig-blue:#405DE6;
+    --ig-purple:#833AB4;
+    --ig-magenta:#C13584;
+    --ig-pink:#E1306C;
+    --ig-red:#FD1D1D;
+    --ig-orange:#F56040;
+    --ig-amber:#FCAF45;
+    --ig-gradient:linear-gradient(135deg,#405DE6,#833AB4,#C13584,#E1306C,#FD1D1D,#F56040,#FCAF45);
 
     --radius:24px;
     --radius-sm:16px;
@@ -56,11 +66,11 @@ h1,h2,h3,h4,.kpi-card h2,.num{ font-family:'Sora',sans-serif; }
     animation:float 18s ease-in-out infinite;
 }
 .aurora-1{ width:520px; height:520px; top:-160px; left:-120px;
-    background:radial-gradient(circle,#7B6CFF,transparent 70%); }
+    background:radial-gradient(circle,#833AB4,transparent 70%); }
 .aurora-2{ width:480px; height:480px; top:10%; right:-160px;
-    background:radial-gradient(circle,#25D366,transparent 70%); animation-delay:-6s; }
+    background:radial-gradient(circle,#E1306C,transparent 70%); animation-delay:-6s; }
 .aurora-3{ width:560px; height:560px; bottom:-220px; left:30%;
-    background:radial-gradient(circle,#22D3EE,transparent 70%); animation-delay:-12s; opacity:.35; }
+    background:radial-gradient(circle,#F56040,transparent 70%); animation-delay:-12s; opacity:.45; }
 
 @keyframes float{
     0%,100%{ transform:translate(0,0) scale(1); }
@@ -116,8 +126,8 @@ h1,h2,h3,h4,.kpi-card h2,.num{ font-family:'Sora',sans-serif; }
     width:50px; height:50px; border-radius:16px;
     display:flex; align-items:center; justify-content:center;
     font-size:24px; color:#fff;
-    background:linear-gradient(135deg,#25D366,#179B4E);
-    box-shadow:0 12px 30px rgba(37,211,102,.4);
+    background:var(--ig-gradient);
+    box-shadow:0 12px 30px rgba(193,53,132,.4);
 }
 .logo h3{ font-size:18px; font-weight:800; letter-spacing:-.3px; }
 .logo span{ font-size:12px; color:var(--muted); }
@@ -137,9 +147,9 @@ h1,h2,h3,h4,.kpi-card h2,.num{ font-family:'Sora',sans-serif; }
 .nav-item i{ width:20px; text-align:center; font-size:16px; }
 .nav-item:hover{ background:var(--surface); color:var(--text); }
 .nav-item.active{
-    background:linear-gradient(100deg,rgba(139,124,255,.22),rgba(139,124,255,.04));
+    background:linear-gradient(100deg,rgba(193,53,132,.22),rgba(193,53,132,.04));
     color:#fff;
-    box-shadow:inset 0 0 0 1px rgba(139,124,255,.25);
+    box-shadow:inset 0 0 0 1px rgba(193,53,132,.25);
 }
 .nav-item.active::before{
     content:""; position:absolute; left:0; top:50%; transform:translateY(-50%);
@@ -149,12 +159,12 @@ h1,h2,h3,h4,.kpi-card h2,.num{ font-family:'Sora',sans-serif; }
 .nav-item.active i{ color:var(--violet); }
 .nav-pill{
     margin-left:auto; font-size:11px; font-weight:700;
-    background:var(--green); color:#062a13;
+    background:var(--ig-gradient); color:#fff;
     padding:1px 8px; border-radius:20px;
 }
 
 .sidebar-card{
-    background:linear-gradient(160deg,rgba(139,124,255,.16),rgba(34,211,238,.06));
+    background:linear-gradient(160deg,rgba(193,53,132,.16),rgba(245,96,64,.06));
     border:1px solid var(--border);
     border-radius:18px; padding:18px; text-align:center;
     display:flex; flex-direction:column; align-items:center; gap:3px;
@@ -162,7 +172,7 @@ h1,h2,h3,h4,.kpi-card h2,.num{ font-family:'Sora',sans-serif; }
 .sidebar-card-icon{
     width:40px; height:40px; border-radius:12px; margin-bottom:6px;
     display:flex; align-items:center; justify-content:center;
-    background:linear-gradient(135deg,var(--violet),var(--cyan)); color:#fff; font-size:16px;
+    background:var(--ig-gradient); color:#fff; font-size:16px;
 }
 .sidebar-card strong{ font-size:14px; }
 .sidebar-card span{ font-size:12px; color:var(--muted); }
@@ -220,7 +230,7 @@ h1,h2,h3,h4,.kpi-card h2,.num{ font-family:'Sora',sans-serif; }
     display:flex; align-items:center; justify-content:center;
     font-weight:700; font-size:14px; color:#fff;
     background:linear-gradient(135deg,var(--violet),var(--pink));
-    box-shadow:0 8px 20px rgba(139,124,255,.35);
+    box-shadow:0 8px 20px rgba(193,53,132,.35);
 }
 
 /* ===================================================
@@ -250,7 +260,7 @@ h1,h2,h3,h4,.kpi-card h2,.num{ font-family:'Sora',sans-serif; }
     box-shadow:0 30px 70px -22px rgba(0,0,0,.7);
 }
 .kpi-card[data-accent=green]{ --c:var(--green); --glow:rgba(37,211,102,.18); }
-.kpi-card[data-accent=violet]{ --c:var(--violet); --glow:rgba(139,124,255,.2); }
+.kpi-card[data-accent=violet]{ --c:var(--violet); --glow:rgba(193,53,132,.2); }
 .kpi-card[data-accent=amber]{ --c:var(--amber); --glow:rgba(251,191,36,.16); }
 .kpi-card[data-accent=cyan]{ --c:var(--cyan); --glow:rgba(34,211,238,.16); }
 
@@ -310,7 +320,7 @@ h1,h2,h3,h4,.kpi-card h2,.num{ font-family:'Sora',sans-serif; }
     padding:7px 14px; border-radius:9px; cursor:pointer; transition:var(--t);
 }
 .seg-btn:hover{ color:var(--text); }
-.seg-btn.active{ background:var(--violet); color:#fff; box-shadow:0 6px 16px rgba(139,124,255,.4); }
+.seg-btn.active{ background:var(--violet); color:#fff; box-shadow:0 6px 16px rgba(193,53,132,.4); }
 
 .canvas-wrap{ position:relative; width:100%; }
 

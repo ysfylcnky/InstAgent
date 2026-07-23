@@ -1,5 +1,5 @@
 /* =====================================================
-   WhatsAgent · Reports sayfası
+   InstaAgent · Reports sayfası
    Tarih aralıklı özet (AI + sipariş + mesaj) + CSV export
 ===================================================== */
 

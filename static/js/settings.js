@@ -1,5 +1,5 @@
 /* =====================================================
-   WhatsAgent · Settings sayfası
+   InstaAgent · Settings sayfası
    settings tablosu (DB-öncelikli, .env fallback) düzenleme
 ===================================================== */
 

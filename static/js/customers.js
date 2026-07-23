@@ -1,5 +1,5 @@
 /* =====================================================
-   WhatsAgent · Customers sayfası
+   InstaAgent · Customers sayfası
    Sol: müşteri listesi (sayfalı) — Sağ: sipariş geçmişi (sayfalı)
 ===================================================== */
 

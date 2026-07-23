@@ -1,5 +1,5 @@
 ﻿/* =====================================================
-   WhatsAgent · Command Center  (Aurora Dark)
+   InstaAgent · Command Center  (Aurora Dark)
 ===================================================== */
 
 const C = {
