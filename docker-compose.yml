@@ -1,0 +1,61 @@
+# InstagramAgent — WhatsApp projesinden BAĞIMSIZ stack.
+# Kendi MySQL/Redis volume'leri ve kendi host portu (8001) vardır; aynı sunucuda
+# WhatsApp stack'iyle yan yana çalışabilir, verileri karışmaz.
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+      # Konteynerler UTC; damgalar 3 saat kaymasın diye yerel saat dilimi.
+      TZ: ${TZ:-Europe/Istanbul}
+    volumes:
+      - mysql_data_ig:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data_ig:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Konteyner içinde MySQL/Redis servis adlarıyla erişilir (.env'i ezer).
+      MYSQL_HOST: mysql
+      REDIS_URL: redis://redis:6379/0
+      TZ: ${TZ:-Europe/Istanbul}
+    ports:
+      # Yalnız localhost'a bağlanır; dışarıdan tek giriş nginx (TLS) üzerinden.
+      # Host portu 8001 → WhatsApp stack'inin 8000'iyle çakışmaz.
+      - "127.0.0.1:8001:8000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  mysql_data_ig:
+  redis_data_ig:
