@@ -81,9 +81,9 @@ PROCESSED_MESSAGE_TTL = 600
 # Webhook doğrulama (Meta paneline birebir aynısı girilir)
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN") or "mumi_verify_token"
 
-# GPT-4.1-mini Pricing (USD / 1M Tokens)
-INPUT_TOKEN_PRICE = 0.40
-OUTPUT_TOKEN_PRICE = 1.60
+# GPT-4o Pricing (USD / 1M Tokens)
+INPUT_TOKEN_PRICE = 2.50
+OUTPUT_TOKEN_PRICE = 10.00
 
 CURRENCY_CACHE_TTL = 3600
 
