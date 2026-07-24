@@ -225,6 +225,10 @@ def build_referral_search_text(message_text, referral):
 # (ç,ğ,ı,ö,ş,ü -> c,g,i,o,s,u; İ/I sadeleştirme).
 _CAPTION_STOPWORDS = {
     "yeni", "sezon",
+    # Bu katalogda "viral"/"trend" neredeyse her ürün adında geçen pazarlama
+    # kelimeleridir (ayırt edici değil); sorguda kalınca alakasız "viral X"
+    # ürünleri eşleşiyor. Ayırt edici kelimelerin öne çıkması için elenirler.
+    "viral", "trend",
     "stoklarimizda", "stokta", "stoklarda", "tukeniyor", "tukendi",
     "son", "adet", "kaldi", "sinirli", "sinirli stok",
     "simdi", "hemen", "acele", "siparis", "ver", "verin", "kesfet",
