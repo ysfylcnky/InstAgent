@@ -20,7 +20,7 @@ import re
 from datetime import datetime
 
 import requests
-from dotenv import set_key, dotenv_values, find_dotenv
+from dotenv import dotenv_values, find_dotenv
 
 from Services.usage_logger import get_connection
 from Services.settings_service import (
@@ -45,9 +45,61 @@ ENV_PATH = _env_path()
 
 
 def _ensure_env_file():
-    """set_key yazmadan önce .env'in var olduğundan emin ol (ilk kurulum)."""
+    """Yazmadan önce .env'in var olduğundan emin ol (ilk kurulum)."""
     if not os.path.exists(ENV_PATH):
         open(ENV_PATH, "a", encoding="utf-8").close()
+
+
+# --------------------------------------------------------------------------
+# .env'i YERİNDE güncelle — rename YOK.
+# .env tek dosya olarak konteynere bind-mount edildiğinde (docker-compose'daki
+# `./.env:/app/.env`), dotenv.set_key gibi "geçici dosya + rename" yöntemiyle
+# yazmak "[Errno 16] Device or resource busy" verir: mount noktasının üzerine
+# rename yapılamaz. Bu yüzden dosya açılıp içerik AYNI inode'a yeniden yazılır.
+# --------------------------------------------------------------------------
+_ENV_SAFE_VALUE = re.compile(r"[A-Za-z0-9_./:@+=-]*")
+
+
+def _env_format_value(value):
+    """Değeri dotenv-uyumlu biçimler: özel karakter yoksa çıplak, varsa tek tırnak.
+
+    Tek tırnaklı değer dotenv'de LİTERAL okunur ('$' genişletmesi olmaz); bu da
+    bcrypt hash'i gibi '$' içeren değerler için güvenlidir.
+    """
+    if value == "" or _ENV_SAFE_VALUE.fullmatch(value):
+        return value
+    return "'" + value.replace("'", "") + "'"
+
+
+def _set_env_in_place(path, key, value):
+    """`.env`'de KEY=VALUE satırını yerinde günceller ya da ekler (rename yok)."""
+    new_line = f"{key}={_env_format_value(value)}"
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            lines = f.read().splitlines()
+    except FileNotFoundError:
+        lines = []
+
+    pattern = re.compile(r"\s*" + re.escape(key) + r"\s*=")
+    out = []
+    replaced = False
+
+    for line in lines:
+        is_key_line = not line.lstrip().startswith("#") and pattern.match(line)
+        if is_key_line:
+            if not replaced:
+                out.append(new_line)
+                replaced = True
+            # aynı anahtarın olası tekrarlarını at
+            continue
+        out.append(line)
+
+    if not replaced:
+        out.append(new_line)
+
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("\n".join(out) + "\n")
 
 
 # --------------------------------------------------------------------------
@@ -350,7 +402,7 @@ def save_section(section_id, fields):
         try:
             _ensure_env_file()
             for k, v in env_writes.items():
-                set_key(ENV_PATH, k, v)
+                _set_env_in_place(ENV_PATH, k, v)
         except Exception as e:
             return {"ok": False, "error": f".env yazılamadı: {e}"}
 
