@@ -337,6 +337,15 @@ def save_section(section_id, fields):
         if not save_stored_settings(setting_writes):
             return {"ok": False, "error": "Ayar kaydedilemedi (DB erişilemiyor olabilir)."}
 
+    # Panel parolası düz metin olarak .env'e YAZILMAZ. bcrypt ile hash'lenip
+    # DASHBOARD_PASSWORD_HASH olarak yazılır — auth katmanı bu hash'i kullanır.
+    # (Aksi halde .env'de zaten bir hash varken düz metin parola hiç etkili olmaz.)
+    if "DASHBOARD_PASSWORD" in env_writes:
+        from Services.auth_service import hash_password
+        env_writes["DASHBOARD_PASSWORD_HASH"] = hash_password(
+            env_writes.pop("DASHBOARD_PASSWORD")
+        )
+
     if env_writes:
         try:
             _ensure_env_file()

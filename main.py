@@ -223,10 +223,16 @@ def looks_like_payment_done(text):
 
     lower = text.lower()
 
+    # NOT: çıplak "dekont" anahtar DEĞİLDİR — müşteri sadece "dekont" yazınca
+    # (ör. "dekontu nereye atayım?") sipariş yanlışlıkla kapanıyordu. Gerçek
+    # dekont görsel olarak gelir ve görsel dalında ele alınır. Metinde ise
+    # yalnızca AÇIK ödeme-tamamlandı ifadeleri sayılır.
     keywords = [
         "ödedim", "odedim", "ödeme yaptım", "odeme yaptim",
         "havale yaptım", "havale yaptim", "eft yaptım", "eft yaptim",
-        "dekont", "parayı yatırdım", "parayi yatirdim",
+        "dekont att", "dekont gönder", "dekont gonder", "dekont yolla",
+        "dekontu att", "dekontu gönder", "dekontu gonder", "dekontu yolla",
+        "parayı yatırdım", "parayi yatirdim",
         "parayı gönderdim", "parayi gonderdim"
     ]
 
@@ -1179,11 +1185,12 @@ async def _process_instagram_webhook(request: Request):
 
                 else:
 
-                    # video / share / story_mention vb.
-                    send_message(
-                        sender,
-                        "Şu an yazılı ve sesli mesajları yanıtlayabiliyorum 😊"
-                    )
+                    # video / share / story_mention / reaction / desteklenmeyen tip.
+                    # Bunlar genelde gerçek bir müşteri sorusu değildir (story/reels
+                    # paylaşımı, tepki, desteklenmeyen içerik). Otomatik "yalnız
+                    # yazılı/sesli" yanıtı göndermek "kendi kendine mesaj" gürültüsüne
+                    # yol açıyordu; bu tür olayları sessizce yok say.
+                    print(f"ℹ️ İşlenmeyen ek tipi, yanıt verilmedi: {atype}")
                     return {"status": "ok"}
 
             elif referral:

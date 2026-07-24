@@ -36,6 +36,13 @@ services:
     build: .
     restart: unless-stopped
     env_file: .env
+    volumes:
+      # Kurulum sihirbazı .env'i günceller; bu değişiklikler HOST .env'e
+      # (env_file'ın okuduğu kaynağa) yansısın diye bağlanır. Aksi halde
+      # sihirbaz konteyner içi geçici bir kopyaya yazar ve hiçbir yere ulaşmaz.
+      # Uygulamak için: kayıttan sonra `docker compose up -d` (konteyner yeniden
+      # oluşturulur ve env_file tekrar okunur).
+      - ./.env:/app/.env
     environment:
       # Konteyner içinde MySQL/Redis servis adlarıyla erişilir (.env'i ezer).
       MYSQL_HOST: mysql
