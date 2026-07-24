@@ -8,7 +8,9 @@ from config import (
     OPENAI_API_KEY,
     MODEL_NAME,
     INPUT_TOKEN_PRICE,
-    OUTPUT_TOKEN_PRICE
+    OUTPUT_TOKEN_PRICE,
+    CACHED_INPUT_DISCOUNT,
+    MAX_OUTPUT_TOKENS
 )
 
 client = OpenAI(
@@ -19,28 +21,47 @@ def _create_chat(messages, sender, tools=None):
 
     start_time = time.time()
 
-    # tools verilmişse modele tool calling imkanı tanınır
+    # tools verilmişse modele tool calling imkanı tanınır.
+    # max_tokens: çıktı token tavanı (maliyet kontrolü).
     if tools:
         response = client.chat.completions.create(
             model=MODEL_NAME,
             messages=messages,
             tools=tools,
-            tool_choice="auto"
+            tool_choice="auto",
+            max_tokens=MAX_OUTPUT_TOKENS
         )
     else:
         response = client.chat.completions.create(
             model=MODEL_NAME,
-            messages=messages
+            messages=messages,
+            max_tokens=MAX_OUTPUT_TOKENS
         )
 
     response_time = time.time() - start_time
+
+    usage = response.usage
+
+    # Prompt caching: tekrar eden ön-ek (sabit sistem promptu) %50 indirimli
+    # faturalanır. cached_tokens'ı ayırıp gerçek (indirimli) maliyeti hesapla;
+    # aksi halde panel gerçek OpenAI faturasından yüksek görünür.
+    cached_tokens = 0
+    try:
+        details = getattr(usage, "prompt_tokens_details", None)
+        if details is not None:
+            cached_tokens = getattr(details, "cached_tokens", 0) or 0
+    except Exception:
+        cached_tokens = 0
+
+    uncached_prompt_tokens = max(usage.prompt_tokens - cached_tokens, 0)
+
     prompt_cost = (
-                          response.usage.prompt_tokens
-                          / 1_000_000
-                  ) * INPUT_TOKEN_PRICE
+        uncached_prompt_tokens / 1_000_000 * INPUT_TOKEN_PRICE
+        + cached_tokens / 1_000_000 * INPUT_TOKEN_PRICE * CACHED_INPUT_DISCOUNT
+    )
 
     completion_cost = (
-                              response.usage.completion_tokens
+                              usage.completion_tokens
                               / 1_000_000
                       ) * OUTPUT_TOKEN_PRICE
 

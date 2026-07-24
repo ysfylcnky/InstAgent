@@ -85,6 +85,15 @@ VERIFY_TOKEN = os.getenv("VERIFY_TOKEN") or "mumi_verify_token"
 INPUT_TOKEN_PRICE = 2.50
 OUTPUT_TOKEN_PRICE = 10.00
 
+# Prompt caching: tekrar eden prompt ön-eki (sabit sistem promptu) OpenAI
+# tarafından otomatik cache'lenir ve %50 indirimli faturalanır. Maliyet
+# hesabı bu indirimi hesaba katsın diye cache'li input çarpanı ayrı tutulur.
+CACHED_INPUT_DISCOUNT = 0.5
+
+# Modelin üreteceği azami yanıt uzunluğu (çıktı token tavanı — maliyet kontrolü).
+# Çıktı token'ı input'un 4 katı pahalı olduğundan makul bir tavan konur.
+MAX_OUTPUT_TOKENS = 500
+
 CURRENCY_CACHE_TTL = 3600
 
 AVERAGE_CHAT_TIME_MINUTES = 4

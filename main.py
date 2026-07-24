@@ -20,6 +20,7 @@ import time
 import re
 import csv
 import io
+import random
 from urllib.parse import urlparse
 import config
 from Services.session_service import (
@@ -253,6 +254,122 @@ def _keep_or_reset_order_state(session):
         session["order_state"] = None
 
 
+def _tr_lower(text):
+    # Türkçe-duyarlı küçük harf (ör. "BEBE MAVİ" -> "bebe mavi")
+    return (text or "").replace("İ", "i").replace("I", "ı").lower()
+
+
+def _join_tr(items):
+    # ["bej", "pudra", "bebe mavi"] -> "bej, pudra ve bebe mavi"
+    items = [str(i).strip() for i in items if str(i).strip()]
+
+    if not items:
+        return ""
+
+    if len(items) == 1:
+        return items[0]
+
+    return ", ".join(items[:-1]) + " ve " + items[-1]
+
+
+def _price_phrase(context):
+    discount = context.get("discount_price")
+    price = context.get("price")
+
+    if discount:
+        return f"{discount} TL (indirimli)"
+
+    if price:
+        return f"{price} TL"
+
+    return None
+
+
+def _size_phrase(sizes):
+    # Sayısalsa "38–50 arası tüm bedenler"; tek/standart bedense "tek beden";
+    # değilse bedenleri listeler.
+    if not sizes:
+        return None
+
+    if len(sizes) == 1:
+        only = str(sizes[0]).strip()
+        if "beden" in _tr_lower(only):
+            return "tek beden"
+        return f"{only} bedeni"
+
+    nums = []
+
+    for size in sizes:
+        try:
+            nums.append(int(str(size).strip()))
+        except (TypeError, ValueError):
+            nums = None
+            break
+
+    if nums and len(nums) >= 3:
+        return f"{min(nums)}–{max(nums)} arası tüm bedenler"
+
+    return _join_tr(sizes) + " bedenleri"
+
+
+# Sabit ama dönüşümlü açılış/kapanışlar — her tanıtımda aynı robotik cümlenin
+# tekrarını önler; LLM çağrısı yapılmadığı için token maliyeti sıfırdır.
+_INTRO_OPENERS = (
+    "Çok şık bir seçim 😊",
+    "Harika bir tercih ✨",
+    "Bu ürün favorilerimizden 😊",
+    "Ah, çok tatlı bir parça 💕",
+)
+
+_INTRO_CLOSERS = (
+    "Aklınıza takılan bir şey olursa çekinmeden sorabilirsiniz 😊",
+    "Merak ettiğiniz bir şey olursa buradayım 💕",
+    "Beden ya da renk konusunda yardımcı olmamı isterseniz yazmanız yeterli 😊",
+)
+
+
+def _humanize_product_intro(context, intro=""):
+    """Ürünü kuru bir özellik listesi yerine sıcak, butik-çalışanı diliyle tanıtır.
+
+    LLM çağrısı YAPMAZ (ek token maliyeti yok). `intro` verilirse açılış olarak
+    o kullanılır (ör. "2 numaralı ürüne geçiyorum"); yoksa sıcak bir açılış seçilir.
+    """
+    name = (context.get("name") or "").strip()
+
+    colors = context.get("available_colors") or []
+    sizes = context.get("available_sizes") or []
+
+    opener = intro.strip() if intro else random.choice(_INTRO_OPENERS)
+
+    parts = [f"{opener} {name}."]
+
+    color_size = []
+
+    if colors:
+        color_size.append(
+            f"{_join_tr([_tr_lower(c) for c in colors])} renkleriyle"
+        )
+
+    size_phrase = _size_phrase(sizes)
+
+    if size_phrase:
+        color_size.append(f"{size_phrase} mevcut")
+
+    if color_size:
+        # Yalnızca ilk harfi büyüt; beden kısaltmalarını (S, M, XL) bozma.
+        sentence = ", ".join(color_size)
+        parts.append(sentence[:1].upper() + sentence[1:] + ".")
+
+    price_phrase = _price_phrase(context)
+
+    if price_phrase:
+        parts.append(f"Fiyatı {price_phrase}.")
+
+    parts.append(random.choice(_INTRO_CLOSERS))
+
+    return " ".join(parts)
+
+
 def activate_ikas_product(sender, product_id, intro=""):
 
     context = get_cached_ikas_context_by_id(product_id)
@@ -271,25 +388,7 @@ def activate_ikas_product(sender, product_id, intro=""):
     _keep_or_reset_order_state(chat_sessions[sender])
     chat_sessions[sender]["pending_products"] = None
 
-    detail = ""
-
-    if context.get("available_colors"):
-        detail += " Renkler: " + ", ".join(context["available_colors"]) + "."
-
-    if context.get("available_sizes"):
-        detail += " Bedenler: " + ", ".join(context["available_sizes"]) + "."
-
-    if context.get("discount_price"):
-        detail += f" Fiyatı {context['discount_price']} TL (indirimli)."
-    elif context.get("price"):
-        detail += f" Fiyatı {context['price']} TL."
-
-    prefix = f"{intro} " if intro else ""
-
-    return (
-        f"{prefix}{context.get('name', '')}.{detail} "
-        "Bu ürünle ilgili sorularınızı sorabilirsiniz."
-    )
+    return _humanize_product_intro(context, intro)
 
 
 def handle_urun_ara(sender, urun_ismi):
@@ -1208,10 +1307,7 @@ async def _process_instagram_webhook(request: Request):
             cleaned_message = message_text.replace(url, "").strip()
 
             if not cleaned_message:
-                send_message(
-                    sender,
-                    "Ürünü görüntüledim 😊 Bu ürünle ilgili sorularınızı sorabilirsiniz."
-                )
+                send_message(sender, _humanize_product_intro(ai_context))
                 return {"status": "ok"}
 
             message_text = cleaned_message
