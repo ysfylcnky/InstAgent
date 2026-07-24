@@ -436,7 +436,14 @@ def _humanize_product_intro(context, intro=""):
     return " ".join(parts)
 
 
-def activate_ikas_product(sender, product_id, intro=""):
+_SHARED_PRODUCT_ACK = (
+    "{name} 😊 Bu ürünle ilgili fiyat, renk, beden — merak ettiğiniz her şeyi sorabilirsiniz 💕",
+    "{name} ✨ Fiyat, beden ya da renk; ne öğrenmek isterseniz sorabilirsiniz 😊",
+    "{name} 💕 Bu ürün hakkında merak ettiklerinizi yanıtlayabilirim, buyurun 😊",
+)
+
+
+def activate_ikas_product(sender, product_id, intro="", brief=False):
 
     context = get_cached_ikas_context_by_id(product_id)
 
@@ -454,10 +461,18 @@ def activate_ikas_product(sender, product_id, intro=""):
     _keep_or_reset_order_state(chat_sessions[sender])
     chat_sessions[sender]["pending_products"] = None
 
+    # brief: paylaşılan post/reel akışında kullanılır. Müşteri ürünün postunu
+    # paylaşıp ARDINDAN bir soru sorduğunda (ör. "fiyatı ne?"), tam tanıtımda
+    # fiyat/renk/beden dökülünce soruya verilen cevap tekrar oluyordu. Bu yüzden
+    # paylaşımda yalnız kısa bir onay verilir; detayı müşterinin sorusu belirler.
+    if brief:
+        name = (context.get("name") or "").strip()
+        return random.choice(_SHARED_PRODUCT_ACK).format(name=name)
+
     return _humanize_product_intro(context, intro)
 
 
-def handle_urun_ara(sender, urun_ismi):
+def handle_urun_ara(sender, urun_ismi, brief=False):
 
     try:
         result = resolve_product_search(urun_ismi)
@@ -489,7 +504,7 @@ def handle_urun_ara(sender, urun_ismi):
             + "\n".join(lines)
         )
 
-    return activate_ikas_product(sender, result["product_id"])
+    return activate_ikas_product(sender, result["product_id"], brief=brief)
 
 
 REFERRAL_ASK_PRODUCT_MESSAGE = (
@@ -1274,7 +1289,7 @@ async def _process_instagram_webhook(request: Request):
                         )
                         return {"status": "ok"}
 
-                    send_message(sender, handle_urun_ara(sender, query))
+                    send_message(sender, handle_urun_ara(sender, query, brief=True))
                     return {"status": "ok"}
 
                 else:
