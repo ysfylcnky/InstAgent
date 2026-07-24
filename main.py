@@ -219,13 +219,33 @@ def build_referral_search_text(message_text, referral):
     return " ".join(p.strip() for p in parts if p and p.strip()).strip()
 
 
+# Paylaşım açıklamalarında ürün adına özgü OLMAYAN mevsim/pazarlama/CTA kelimeleri.
+# Sorgudan atılır ki ayırt edici ürün adı (ör. "Vintage Gömlek") öne çıksın ve
+# İKAS araması doğru ürünü döndürsün. Anahtarlar _tr_lower ile normalize edilmiştir
+# (ç,ğ,ı,ö,ş,ü -> c,g,i,o,s,u; İ/I sadeleştirme).
+_CAPTION_STOPWORDS = {
+    "yeni", "sezon",
+    "stoklarimizda", "stokta", "stoklarda", "tukeniyor", "tukendi",
+    "son", "adet", "kaldi", "sinirli", "sinirli stok",
+    "simdi", "hemen", "acele", "siparis", "ver", "verin", "kesfet",
+    "tikla", "tiklayin", "link", "linkte", "linkimizde",
+    "bio", "biyoda", "biyomuzda", "dm", "mesaj",
+    "web", "site", "sitede", "sitemizde", "sitemizden", "www", "com",
+    "noureprive", "noure", "prive",
+    "kargo", "ucretsiz", "bedava",
+    "indirim", "indirimde", "indirimli", "kampanya", "kampanyali",
+    "hediyeli", "hediye", "firsat", "fiyat", "geldi", "geliyor",
+}
+
+
 def _product_query_from_caption(title):
     """Paylaşılan gönderi/reel açıklamasından (payload.title) aranabilir ürün adını çıkarır.
 
     Instagram'da müşteri genelde ürünün postunu/reel'ini DM olarak paylaşır; ne
-    ürün adı ne link yazar. Bu paylaşımlarda ürün adı açıklamanın İLK satırındadır;
-    sonrasında pazarlama metni ve site linki gelir. İlk anlamlı satırı alıp
-    markdown link/URL'leri temizleyerek katalogda aranabilir bir sorgu üretir.
+    ürün adı ne link yazar. Ürün adı açıklamanın İLK satırındadır; sonrasında
+    pazarlama metni + site linki gelir. İlk anlamlı satırı alır, URL/emoji'leri
+    temizler ve mevsim/pazarlama kelimelerini ayıklayıp ayırt edici ürün adını
+    bırakır (ör. "Yeni Sezon Viral Vintage Gömlek Stoklarımızda ✨" -> "Viral Vintage Gömlek").
     """
     if not title:
         return ""
@@ -242,7 +262,21 @@ def _product_query_from_caption(title):
     first_line = re.sub(r"https?://\S+", " ", first_line)
     first_line = re.sub(r"www\.\S+", " ", first_line)
 
-    return re.sub(r"\s+", " ", first_line).strip()
+    # Emoji / sembol / noktalama -> boşluk (Türkçe harfler ve rakamlar korunur)
+    first_line = re.sub(r"[^\w\s-]", " ", first_line)
+
+    # Mevsim/pazarlama kelimelerini at; ayırt edici ürün adı kalsın.
+    # _normalize_tr İKAS aramasıyla AYNI normalizasyondur (ç,ğ,ı,ö,ş,ü katlanır),
+    # böylece stopword'ler (ASCII) Türkçe karakterli kelimelerle de eşleşir.
+    kept = [w for w in first_line.split() if _normalize_tr(w) not in _CAPTION_STOPWORDS]
+
+    result = re.sub(r"\s+", " ", " ".join(kept)).strip()
+
+    # Her şey elendiyse (nadiren) temizlenmiş ilk satıra düş — boş sorgu göndermeyelim
+    if not result:
+        result = re.sub(r"\s+", " ", first_line).strip()
+
+    return result
 
 
 def looks_like_payment_done(text):
