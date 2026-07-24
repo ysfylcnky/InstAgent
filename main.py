@@ -219,6 +219,32 @@ def build_referral_search_text(message_text, referral):
     return " ".join(p.strip() for p in parts if p and p.strip()).strip()
 
 
+def _product_query_from_caption(title):
+    """Paylaşılan gönderi/reel açıklamasından (payload.title) aranabilir ürün adını çıkarır.
+
+    Instagram'da müşteri genelde ürünün postunu/reel'ini DM olarak paylaşır; ne
+    ürün adı ne link yazar. Bu paylaşımlarda ürün adı açıklamanın İLK satırındadır;
+    sonrasında pazarlama metni ve site linki gelir. İlk anlamlı satırı alıp
+    markdown link/URL'leri temizleyerek katalogda aranabilir bir sorgu üretir.
+    """
+    if not title:
+        return ""
+
+    first_line = ""
+
+    for line in str(title).splitlines():
+        if line.strip():
+            first_line = line.strip()
+            break
+
+    # [metin](url) -> metin ; çıplak URL'leri temizle
+    first_line = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", first_line)
+    first_line = re.sub(r"https?://\S+", " ", first_line)
+    first_line = re.sub(r"www\.\S+", " ", first_line)
+
+    return re.sub(r"\s+", " ", first_line).strip()
+
+
 def looks_like_payment_done(text):
 
     lower = text.lower()
@@ -1154,6 +1180,8 @@ async def _process_instagram_webhook(request: Request):
                 atype = (attachment.get("type") or "").lower()
                 payload = attachment.get("payload") or {}
                 media_url = payload.get("url")
+                # ig_post / ig_reel paylaşımlarında ürün açıklaması burada gelir
+                shared_title = payload.get("title")
 
                 if atype == "audio" and media_url:
 
@@ -1183,13 +1211,43 @@ async def _process_instagram_webhook(request: Request):
                     )
                     return {"status": "ok"}
 
+                elif shared_title:
+
+                    # Paylaşılan ürün gönderisi / reel'i (ig_post, ig_reel, share...):
+                    # açıklama (payload.title) ürün adını içerir. Instagram'da müşteri
+                    # çoğunlukla ürünün postunu paylaşır — ad/link yazmaz. Açıklamadan
+                    # ürün adını çıkarıp katalogda arıyoruz (Instagram'ın ana giriş yolu).
+                    if message_id and is_duplicate(message_id):
+                        return {"status": "duplicate"}
+
+                    query = _product_query_from_caption(shared_title)
+
+                    if sender not in chat_sessions:
+                        chat_sessions[sender] = new_session()
+                    chat_sessions[sender]["last_activity"] = time.time()
+
+                    log_message(
+                        sender,
+                        "gelen",
+                        f"[paylaşılan ürün] {query}" if query else "[paylaşılan gönderi]"
+                    )
+
+                    if not query:
+                        send_message(
+                            sender,
+                            "Paylaştığınız ürünü tam seçemedim 🙏 Ürünün ismini "
+                            "yazabilir misiniz? 😊"
+                        )
+                        return {"status": "ok"}
+
+                    send_message(sender, handle_urun_ara(sender, query))
+                    return {"status": "ok"}
+
                 else:
 
-                    # video / share / story_mention / reaction / desteklenmeyen tip.
-                    # Bunlar genelde gerçek bir müşteri sorusu değildir (story/reels
-                    # paylaşımı, tepki, desteklenmeyen içerik). Otomatik "yalnız
-                    # yazılı/sesli" yanıtı göndermek "kendi kendine mesaj" gürültüsüne
-                    # yol açıyordu; bu tür olayları sessizce yok say.
+                    # video / story_mention / reaction / desteklenmeyen (title yok) tip.
+                    # Bunlar genelde gerçek bir müşteri sorusu değildir; otomatik yanıt
+                    # "kendi kendine mesaj" gürültüsüne yol açıyordu — sessizce yok say.
                     print(f"ℹ️ İşlenmeyen ek tipi, yanıt verilmedi: {atype}")
                     return {"status": "ok"}
 
