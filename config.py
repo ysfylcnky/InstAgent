@@ -27,6 +27,20 @@ IG_GRAPH_VERSION = os.getenv("IG_GRAPH_VERSION") or "v23.0"
 IG_API_BASE = os.getenv("IG_API_BASE") or "graph.facebook.com"
 
 # ======================================================================
+# Meta App (PLATFORM seviyesi — tüm tenant'lar için ortak; tenant'a ait DEĞİL).
+# Tenant'ların Instagram bağlantısı (OAuth) bu platform kimlik bilgilerini
+# kullanır. Bunlar SİSTEM sırlarıdır ve .env/secret manager'da kalır; asla
+# tenant_settings'e yazılmaz. (Faz 9)
+# ======================================================================
+META_APP_ID = os.getenv("META_APP_ID")
+META_APP_SECRET = os.getenv("META_APP_SECRET")
+META_REDIRECT_URI = os.getenv("META_REDIRECT_URI")
+
+# Tenant sırlarının şifrelenmesinde kullanılan sistem master anahtarı (Fernet).
+# crypto_service tembel okur; burada varlığı config üzerinden de görünür olsun.
+ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
+
+# ======================================================================
 # Mağaza bildirimi (satıcı tarafı) — WhatsApp üzerinden.
 # Müşteri Instagram'dan gelse de sipariş bildirimi mağazanın WhatsApp
 # numarasına gider. Bu alanlar boşsa bildirim atlanır (akış kesilmez).
@@ -155,3 +169,58 @@ def employee_hourly_cost():
 
 def average_chat_time_minutes():
     return _get_float_setting("AVERAGE_CHAT_TIME_MINUTES", AVERAGE_CHAT_TIME_MINUTES)
+
+
+# ======================================================================
+# Tenant-aware credential/config accessor'ları (Faz 3+).
+# Aktif tenant'ın ayarından okunur; kayıt yoksa .env/kod varsayılanına düşülür.
+# İzole tenant bağlamı olmadan (tek-tenant köprüsü) tenant 1 değeri döner.
+# Entegrasyon servisleri (Faz 5-6) modül sabiti yerine bu fonksiyonları çağırır.
+# ======================================================================
+
+def ig_account_id():
+    return get_setting("IG_ACCOUNT_ID", IG_ACCOUNT_ID)
+
+
+def ig_access_token():
+    return get_setting("IG_ACCESS_TOKEN", IG_ACCESS_TOKEN)
+
+
+def ig_api_base():
+    return get_setting("IG_API_BASE", IG_API_BASE)
+
+
+def ig_graph_version():
+    return get_setting("IG_GRAPH_VERSION", IG_GRAPH_VERSION)
+
+
+def openai_api_key():
+    return get_setting("OPENAI_API_KEY", OPENAI_API_KEY)
+
+
+def model_name():
+    return get_setting("MODEL_NAME", MODEL_NAME)
+
+
+def ikas_store_name():
+    return get_setting("IKAS_STORE_NAME", IKAS_STORE_NAME)
+
+
+def ikas_client_id():
+    return get_setting("IKAS_CLIENT_ID", IKAS_CLIENT_ID)
+
+
+def ikas_client_secret():
+    return get_setting("IKAS_CLIENT_SECRET", IKAS_CLIENT_SECRET)
+
+
+def whatsapp_phone_number_id():
+    return get_setting("WHATSAPP_PHONE_NUMBER_ID", WHATSAPP_PHONE_NUMBER_ID)
+
+
+def whatsapp_access_token():
+    return get_setting("WHATSAPP_ACCESS_TOKEN", WHATSAPP_ACCESS_TOKEN)
+
+
+def store_notify_phone():
+    return get_setting("STORE_NOTIFY_PHONE", STORE_NOTIFY_PHONE)

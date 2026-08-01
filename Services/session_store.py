@@ -132,7 +132,7 @@ class RedisSessionStore(SessionStore):
     kaybeder — mesajı tamamen düşürmekten iyidir.
     """
 
-    KEY_PREFIX = "ig:session:"
+    KEY_PREFIX = "ia:session:"
 
     def __init__(self, client, ttl=SESSION_TIMEOUT):
         self._client = client
@@ -240,6 +240,24 @@ class SessionRegistry(MutableMapping):
     def __init__(self, store):
         self._store = store
 
+    # -- tenant namespace ---------------------------------------------
+
+    def _ns(self, session_id):
+        """Oturum kimliğini aktif tenant ile isimlendirir: '{tenant}:{igsid}'.
+
+        Aynı Instagram kullanıcı ID'si (IGSID) farklı tenant'larda çakışmasın
+        diye her anahtar tenant namespace'i taşır. Böylece Redis anahtarı
+        'ia:session:{tenant}:{igsid}' olur. Tenant bağlamı yoksa (arka plan)
+        DEFAULT_TENANT_ID kullanılır.
+        """
+        from Services.db import get_current_tenant
+        from Services.models import DEFAULT_TENANT_ID
+
+        tenant = get_current_tenant()
+        if tenant is None:
+            tenant = DEFAULT_TENANT_ID
+        return f"{tenant}:{session_id}"
+
     # -- istek yaşam döngüsü ------------------------------------------
 
     def begin_request(self):
@@ -272,33 +290,36 @@ class SessionRegistry(MutableMapping):
     # -- MutableMapping arayüzü ---------------------------------------
 
     def __getitem__(self, session_id):
+        key = self._ns(session_id)
         scope = self._scope()
 
-        if session_id in scope:
-            return scope[session_id]
+        if key in scope:
+            return scope[key]
 
-        session = self._store.load(session_id)
+        session = self._store.load(key)
 
         if session is None:
             raise KeyError(session_id)
 
-        scope[session_id] = session
+        scope[key] = session
         return session
 
     def __setitem__(self, session_id, session):
-        self._scope()[session_id] = session
+        self._scope()[self._ns(session_id)] = session
 
     def __delitem__(self, session_id):
-        self._scope().pop(session_id, None)
-        self._store.delete(session_id)
+        key = self._ns(session_id)
+        self._scope().pop(key, None)
+        self._store.delete(key)
 
     def __contains__(self, session_id):
+        key = self._ns(session_id)
         scope = self._scope()
 
-        if session_id in scope:
+        if key in scope:
             return True
 
-        session = self._store.load(session_id)
+        session = self._store.load(key)
 
         if session is None:
             # Var olmayan oturum için kayıt OLUŞTURULMAZ.
@@ -306,7 +327,7 @@ class SessionRegistry(MutableMapping):
 
         # Bulunan oturum kapsama alınır: `x in reg` ardından gelen `reg[x]`
         # ikinci bir depo okuması yapmaz.
-        scope[session_id] = session
+        scope[key] = session
         return True
 
     def __iter__(self):

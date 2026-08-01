@@ -15,3 +15,6 @@ bcrypt==4.2.1
 python-multipart==0.0.20
 
 SQLAlchemy==2.0.36
+
+# Tenant sırlarının Fernet ile şifrelenmesi (crypto_service).
+cryptography==43.0.1

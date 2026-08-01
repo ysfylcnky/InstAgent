@@ -1,19 +1,17 @@
 ﻿import requests
-from config import (
-    WHATSAPP_ACCESS_TOKEN,
-    WHATSAPP_PHONE_NUMBER_ID
-)
+import config
 
 def send_whatsapp_message(to_number, message):
 
+    # Mağaza bildirimi AKTİF TENANT'ın WhatsApp bilgileriyle gönderilir.
     url = (
         f"https://graph.facebook.com/v23.0/"
-        f"{WHATSAPP_PHONE_NUMBER_ID}/messages"
+        f"{config.whatsapp_phone_number_id()}/messages"
     )
 
     headers = {
         "Authorization":
-            f"Bearer {WHATSAPP_ACCESS_TOKEN}",
+            f"Bearer {config.whatsapp_access_token()}",
         "Content-Type": "application/json"
     }
 

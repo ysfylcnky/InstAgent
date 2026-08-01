@@ -1,31 +1,57 @@
 ﻿from openai import OpenAI
 import time
 import json
+import config
 from Services.usage_logger import log_usage
 from Services.order_service import SIPARIS_TOOL, SIPARIS_GUNCELLE_TOOL
 from Services.ikas_service import URUN_ARA_TOOL
 from config import (
-    OPENAI_API_KEY,
-    MODEL_NAME,
     INPUT_TOKEN_PRICE,
     OUTPUT_TOKEN_PRICE,
     CACHED_INPUT_DISCOUNT,
     MAX_OUTPUT_TOKENS
 )
 
-client = OpenAI(
-    api_key=OPENAI_API_KEY
-)
+# OpenAI client'ı AKTİF TENANT'ın anahtarıyla, tenant başına (lazy) kurulur.
+# Böylece her tenant kendi OpenAI hesabını/faturasını kullanır.
+_clients = {}
+
+
+def _get_client():
+    from Services.db import get_current_tenant
+    from Services.models import DEFAULT_TENANT_ID
+
+    tenant = get_current_tenant()
+    if tenant is None:
+        tenant = DEFAULT_TENANT_ID
+
+    client = _clients.get(tenant)
+    if client is None:
+        client = OpenAI(api_key=config.openai_api_key())
+        _clients[tenant] = client
+    return client
+
+
+def invalidate_client(tenant_id=None):
+    """OpenAI anahtarı değişince tenant client cache'ini temizler."""
+    if tenant_id is None:
+        _clients.clear()
+    else:
+        _clients.pop(tenant_id, None)
+
 
 def _create_chat(messages, sender, tools=None):
 
     start_time = time.time()
 
+    client = _get_client()
+    model_name = config.model_name()
+
     # tools verilmişse modele tool calling imkanı tanınır.
     # max_tokens: çıktı token tavanı (maliyet kontrolü).
     if tools:
         response = client.chat.completions.create(
-            model=MODEL_NAME,
+            model=model_name,
             messages=messages,
             tools=tools,
             tool_choice="auto",
@@ -33,7 +59,7 @@ def _create_chat(messages, sender, tools=None):
         )
     else:
         response = client.chat.completions.create(
-            model=MODEL_NAME,
+            model=model_name,
             messages=messages,
             max_tokens=MAX_OUTPUT_TOKENS
         )
@@ -71,7 +97,7 @@ def _create_chat(messages, sender, tools=None):
 
         sender=sender,
 
-        model=MODEL_NAME,
+        model=model_name,
 
         prompt_tokens=response.usage.prompt_tokens,
 

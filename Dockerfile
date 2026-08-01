@@ -14,7 +14,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Uygulama kaynağı
 COPY . .
 
+# Başlangıç betiği: migration + uygulama
+RUN chmod +x docker-entrypoint.sh
+
 EXPOSE 8000
 
-# Uygulama main.py içindeki "app" FastAPI nesnesi ile başlatılır
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Konteyner: önce şema migration'ı, sonra uvicorn (bkz. docker-entrypoint.sh)
+ENTRYPOINT ["./docker-entrypoint.sh"]

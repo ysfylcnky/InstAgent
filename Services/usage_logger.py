@@ -1,5 +1,3 @@
-import mysql.connector
-from mysql.connector import pooling
 from datetime import datetime
 from config import (
     MYSQL_HOST,
@@ -8,6 +6,9 @@ from config import (
     MYSQL_PASSWORD,
     MYSQL_DATABASE,
 )
+
+# mysql.connector import'u TEMBEL yapılır: SQLite ile çalışan testler (ve ileride
+# tamamen ORM'e taşınacak kod) bu sürücü kurulu olmadan da modülü import edebilsin.
 
 # Tüm bağlantılar tek bir havuzdan yönetilir.
 # Havuz ilk ihtiyaç anında (lazy) kurulur.
@@ -19,6 +20,7 @@ def _get_pool():
     global _pool
 
     if _pool is None:
+        from mysql.connector import pooling
 
         _pool = pooling.MySQLConnectionPool(
             pool_name="usage_pool",
@@ -49,6 +51,8 @@ def initialize_database():
     MySQL'e bağlanılamazsa uygulamayı çökertmez; sadece hatayı loglar.
     """
     try:
+
+        import mysql.connector
 
         # Önce veritabanını oluştur (database parametresi olmadan sunucuya bağlan)
         server_conn = mysql.connector.connect(
@@ -163,58 +167,29 @@ def log_usage(
     cost,
     response_time
 ):
-    """Tek bir OpenAI çağrısının kullanım bilgisini kaydeder.
+    """Tek bir OpenAI çağrısının kullanım bilgisini kaydeder (ORM, tenant-aware).
 
-    Loglama hatası yanıt akışını (webhook) kesmesin diye tüm hatalar yutulur.
+    Faz 6: ham SQL'den scoped ORM'e taşındı. Kayıt, aktif tenant'la OTOMATİK
+    damgalanır (scoped session). Loglama hatası yanıt akışını (webhook) kesmesin
+    diye tüm hatalar yutulur.
     """
-    conn = None
-
     try:
+        from Services.db import get_session
+        from Services.models import UsageLog
 
-        conn = get_connection()
-
-        cursor = conn.cursor()
-
-        cursor.execute(
-            """
-            INSERT INTO usage_logs (
-                timestamp,
-                sender,
-                model,
-                prompt_tokens,
-                completion_tokens,
-                total_tokens,
-                cost,
-                response_time
-            )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """,
-            (
-                datetime.now(),
-                sender,
-                model,
-                prompt_tokens,
-                completion_tokens,
-                total_tokens,
-                cost,
-                response_time
-            )
-        )
-
-        conn.commit()
-        cursor.close()
-
+        with get_session() as s:
+            s.add(UsageLog(
+                timestamp=datetime.now(),
+                sender=sender,
+                model=model,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=total_tokens,
+                cost=cost,
+                response_time=response_time,
+            ))
     except Exception as e:
-
         print("🔴 log_usage hatası:", e)
-
-    finally:
-
-        if conn is not None:
-            try:
-                conn.close()
-            except Exception:
-                pass
 
 
 def get_total_requests():

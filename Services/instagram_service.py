@@ -15,28 +15,24 @@ mesaj göndermek API tarafından reddedilir (bu bilinçli bir platform kısıtı
 
 import requests
 
-from config import (
-    IG_ACCOUNT_ID,
-    IG_ACCESS_TOKEN,
-    IG_GRAPH_VERSION,
-    IG_API_BASE,
-)
+import config
 
 
 def send_instagram_message(recipient_id, message):
     """Instagram kullanıcısına (IGSID) metin mesajı gönderir.
 
-    Taban adres IG_API_BASE'ten gelir (Facebook Sayfası yolu için
-    graph.facebook.com, Instagram Login yolu için graph.instagram.com).
+    Hesap/token/taban adres AKTİF TENANT'ın ayarından okunur (yoksa .env
+    fallback). Böylece her tenant kendi Instagram hesabından gönderim yapar.
+    Taban adres graph.facebook.com (FB Sayfası) ya da graph.instagram.com olabilir.
     """
 
     url = (
-        f"https://{IG_API_BASE}/{IG_GRAPH_VERSION}/"
-        f"{IG_ACCOUNT_ID}/messages"
+        f"https://{config.ig_api_base()}/{config.ig_graph_version()}/"
+        f"{config.ig_account_id()}/messages"
     )
 
     headers = {
-        "Authorization": f"Bearer {IG_ACCESS_TOKEN}",
+        "Authorization": f"Bearer {config.ig_access_token()}",
         "Content-Type": "application/json",
     }
 

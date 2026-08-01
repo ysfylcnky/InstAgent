@@ -34,10 +34,11 @@ from Services.session_store import (
 )
 from Services.auth_service import (
     COOKIE_NAME,
-    verify_credentials,
+    authenticate,
     create_token,
     verify_token,
 )
+from Services.db import current_tenant_id
 from config import (
     JWT_EXPIRE_HOURS,
     COOKIE_SECURE,
@@ -82,6 +83,13 @@ from Services.setup_service import (
     is_setup_complete,
 )
 from Services.message_service import is_duplicate
+from Services.db import tenant_scope
+from Services.tenant_service import (
+    extract_ig_account_id,
+    resolve_tenant_by_ig_account_id,
+)
+from Services import onboarding_service
+from Services import meta_oauth_service
 from Services.dashboard_service import (
     get_dashboard_data,
     get_conversations_list,
@@ -108,16 +116,18 @@ def send_message(recipient_id, message):
 
 
 def notify_store(message):
-    # Sipariş bildirimi mağazanın WhatsApp numarasına (STORE_NOTIFY_PHONE) gider.
+    # Sipariş bildirimi AKTİF TENANT'ın mağaza WhatsApp numarasına gider.
     # Müşteri Instagram'dan gelse de satıcı tarafı WhatsApp'tan bilgilendirilir.
     # Bildirim müşteri sohbeti sayılmaz, conversations'a YAZILMAZ. Gönderim
     # başarısız olsa bile ana akış kesilmez.
-    if not STORE_NOTIFY_PHONE:
+    store_notify_phone = config.store_notify_phone()
+
+    if not store_notify_phone:
         print("⚠️ STORE_NOTIFY_PHONE tanımlı değil")
         return
 
     try:
-        _send_whatsapp_notify(STORE_NOTIFY_PHONE, message)
+        _send_whatsapp_notify(store_notify_phone, message)
     except Exception as e:
         print("NOTIFY SEND ERROR:", str(e))
 
@@ -735,15 +745,29 @@ class AuthRequired(Exception):
     """Geçerli bir oturum çerezi bulunamadığında yükseltilir."""
 
 
-def require_dashboard_auth(request: Request):
+async def require_dashboard_auth(request: Request):
+    """Oturumu doğrular VE isteğin süresi boyunca aktif tenant'ı auth'tan çözer.
+
+    Tenant kimliği yalnızca imzalı JWT'den gelir; böylece panel sorguları
+    (scoped session) otomatik olarak doğru tenant'a izole olur. İstek bitince
+    tenant bağlamı geri alınır (contextvar sızmaz).
+
+    ASYNC generator dependency: set/reset aynı async context'te olur (sync
+    generator'da setup/teardown farklı context'lere düşüp reset'i bozuyordu).
+    Değer, sync endpoint'lere threadpool'a context KOPYALANARAK taşınır.
+    """
     token = request.cookies.get(COOKIE_NAME)
 
-    username = verify_token(token)
+    ctx = verify_token(token)
 
-    if username is None:
+    if ctx is None:
         raise AuthRequired()
 
-    return username
+    scope_token = current_tenant_id.set(ctx["tenant_id"])
+    try:
+        yield ctx
+    finally:
+        current_tenant_id.reset(scope_token)
 
 
 @app.exception_handler(AuthRequired)
@@ -789,7 +813,9 @@ async def login_submit(
     username: str = Form(...),
     password: str = Form(...),
 ):
-    if not verify_credentials(username, password):
+    auth_ctx = authenticate(username, password)
+
+    if not auth_ctx:
         return templates.TemplateResponse(
             request=request,
             name="login.html",
@@ -797,7 +823,7 @@ async def login_submit(
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
 
-    token = create_token(username)
+    token = create_token(auth_ctx)
 
     response = RedirectResponse(url="/dashboard", status_code=303)
     _set_session_cookie(response, token)
@@ -1118,6 +1144,63 @@ async def admin_setup_complete(user: str = Depends(require_dashboard_auth)):
 
 
 # ======================================================================
+# Platform yönetimi (super-admin) + Instagram bağlantısı (OAuth)
+# ======================================================================
+
+def require_superadmin(ctx: dict = Depends(require_dashboard_auth)):
+    """Yalnız platform operatörü (role=superadmin) erişebilir."""
+    if ctx.get("role") != "superadmin":
+        raise HTTPException(status_code=403, detail="Yalnız platform operatörü.")
+    return ctx
+
+
+@app.post("/admin/platform/tenants")
+async def admin_create_tenant(request: Request, ctx: dict = Depends(require_superadmin)):
+    """Yeni tenant + owner user oluşturur (atomik). Super-admin gerektirir."""
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    try:
+        res = onboarding_service.create_tenant(
+            name=body.get("name"),
+            owner_email=body.get("owner_email"),
+            owner_password=body.get("owner_password"),
+            ig_account_id=body.get("ig_account_id"),
+        )
+    except ValueError as e:
+        return JSONResponse(status_code=400, content={"ok": False, "error": str(e)})
+
+    return {"ok": True, "tenant": res}
+
+
+@app.get("/admin/connect/instagram")
+def admin_connect_instagram(ctx: dict = Depends(require_dashboard_auth)):
+    """Aktif tenant için Instagram OAuth authorize URL'i üretir (state ile)."""
+    url, _ = meta_oauth_service.build_authorize_url(
+        ctx["tenant_id"], ctx.get("user_id")
+    )
+    return {"authorize_url": url}
+
+
+@app.get("/connect/instagram/callback")
+def instagram_oauth_callback(code: str = None, state: str = None):
+    """OAuth callback — state doğrulanır, token aktif tenant'a şifreli bağlanır.
+
+    Tenant kimliği state'ten çözülür (query'den DEĞİL); token loglanmaz.
+    """
+    if not code or not state:
+        return JSONResponse(status_code=400, content={"ok": False, "error": "code ve state gerekli."})
+    try:
+        res = meta_oauth_service.handle_callback(state, code)
+    except meta_oauth_service.OAuthError as e:
+        return JSONResponse(status_code=400, content={"ok": False, "error": str(e)})
+
+    return {"ok": True, "connected": res}
+
+
+# ======================================================================
 # Instagram webhook
 # ======================================================================
 
@@ -1136,17 +1219,38 @@ async def verify_webhook(request: Request):
 
 @app.post("/webhook")
 async def instagram_webhook(request: Request):
-    """Oturum birim-iş (unit of work) sınırı.
+    """Instagram webhook girişi — TENANT ROUTING + oturum birim-iş sınırı.
 
-    İstek başında temiz bir kimlik haritası açılır; istek nasıl sonlanırsa
-    sonlansın dokunulan oturumlar finally içinde tek seferde kalıcı depoya yazılır.
+    Akış:
+      1) Gövdeyi çöz, olayı alan IG Business Account ID'sini (entry.id) al.
+      2) Hesaptan tenant'ı çöz. Eşleşmezse FAIL-CLOSED: işlemeden reddet
+         (asla default tenant'a düşme, başka tenant context'inde işleme).
+      3) tenant_scope içinde işle → DB/settings/session/AI otomatik izole.
+
+    İstek başında temiz bir oturum kimlik haritası açılır; istek nasıl
+    sonlanırsa sonlansın dokunulan oturumlar finally'de kalıcı depoya yazılır.
     """
-    chat_sessions.begin_request()
+    body = await request.json()
 
-    try:
-        return await _process_instagram_webhook(request)
-    finally:
-        chat_sessions.flush()
+    if body.get("object") != "instagram":
+        # Bu uç yalnız Instagram mesajlaşma olaylarını işler.
+        return {"status": "ignored"}
+
+    ig_account_id = extract_ig_account_id(body)
+    tenant_id = resolve_tenant_by_ig_account_id(ig_account_id)
+
+    if tenant_id is None:
+        # Bilinmeyen/pasif hesap — güvenli log (hesap ID'si maskeli), fail-closed.
+        tail = str(ig_account_id)[-4:] if ig_account_id else "?"
+        print(f"⛔ Bilinmeyen IG hesabı (…{tail}) — webhook reddedildi (fail-closed).")
+        return {"status": "ignored", "reason": "unknown_account"}
+
+    with tenant_scope(tenant_id):
+        chat_sessions.begin_request()
+        try:
+            return await _process_instagram_webhook(body)
+        finally:
+            chat_sessions.flush()
 
 
 def _parse_instagram_event(body):
@@ -1172,13 +1276,9 @@ def _parse_instagram_event(body):
     return sender, event
 
 
-async def _process_instagram_webhook(request: Request):
+async def _process_instagram_webhook(body):
+    """Tenant scope'u ÇAĞIRAN tarafından ayarlanmış (tenant_scope) parsed gövdeyi işler."""
     cleanup_sessions()
-    body = await request.json()
-
-    if body.get("object") != "instagram":
-        # Bu uç yalnız Instagram mesajlaşma olaylarını işler.
-        return {"status": "ignored"}
 
     print("INSTAGRAM WEBHOOK:")
     print(json.dumps(body, indent=2, ensure_ascii=False))
@@ -1517,7 +1617,9 @@ async def _process_instagram_webhook(request: Request):
                 order_block = build_order_block(chat_sessions[sender].get("last_order"))
 
             response = product_chat(
-                system_prompt,
+                # Sistem promptu HER İSTEKTE aktif tenant'a göre kurulur
+                # (mağazanın IBAN'ı vb. tenant ayarlarından enjekte edilir).
+                build_system_prompt(),
                 products_block,
                 history,
                 message_text,

@@ -1,12 +1,17 @@
 import requests
 import re
 import time
-from config import (
-    IKAS_STORE_NAME,
-    IKAS_CLIENT_ID,
-    IKAS_CLIENT_SECRET,
-    CACHE_TTL
-)
+import config
+from config import CACHE_TTL
+
+
+def _tenant_key():
+    """Cache namespace'i için aktif tenant kimliği (yoksa default)."""
+    from Services.db import get_current_tenant
+    from Services.models import DEFAULT_TENANT_ID
+
+    t = get_current_tenant()
+    return t if t is not None else DEFAULT_TENANT_ID
 
 IKAS_TOKEN_URL_TEMPLATE = "https://{store}.myikas.com/api/admin/oauth/token"
 IKAS_GRAPHQL_URL = "https://api.myikas.com/api/v1/admin/graphql"
@@ -88,11 +93,11 @@ query ListProduct($pagination: PaginationInput) {
 }
 """
 
-_token_cache = {
-    "access_token": None,
-    "expires_at": 0
-}
-
+# Token/ürün cache'leri TENANT'a göre namespace'lidir: her tenant kendi İKAS
+# mağazasına sahip olduğundan bir tenant'ın token'ı/ürünü diğerine SIZMAMALIDIR.
+# _token_cache: {tenant_id: {"access_token":..., "expires_at":...}}
+_token_cache = {}
+# ikas_search_cache / ikas_product_cache anahtarları (tenant_id, ...) demetidir.
 ikas_search_cache = {}
 ikas_product_cache = {}
 
@@ -100,19 +105,26 @@ ikas_product_cache = {}
 def _get_access_token():
 
     now = time.time()
+    tenant = _tenant_key()
 
+    cached = _token_cache.get(tenant)
     # Token süresi dolmadan (bitişten ~5 dk önce) yenilenir
-    if _token_cache["access_token"] and now < _token_cache["expires_at"] - 300:
-        return _token_cache["access_token"]
+    if cached and cached.get("access_token") and now < cached["expires_at"] - 300:
+        return cached["access_token"]
 
-    url = IKAS_TOKEN_URL_TEMPLATE.format(store=IKAS_STORE_NAME)
+    # İKAS credential'ları AKTİF TENANT'ın ayarından okunur (yoksa .env fallback).
+    store = config.ikas_store_name()
+    client_id = config.ikas_client_id()
+    client_secret = config.ikas_client_secret()
+
+    url = IKAS_TOKEN_URL_TEMPLATE.format(store=store)
 
     response = requests.post(
         url,
         data={
             "grant_type": "client_credentials",
-            "client_id": IKAS_CLIENT_ID,
-            "client_secret": IKAS_CLIENT_SECRET
+            "client_id": client_id,
+            "client_secret": client_secret
         },
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         timeout=10
@@ -121,10 +133,12 @@ def _get_access_token():
 
     data = response.json()
 
-    _token_cache["access_token"] = data["access_token"]
-    _token_cache["expires_at"] = now + data.get("expires_in", 14400)
+    _token_cache[tenant] = {
+        "access_token": data["access_token"],
+        "expires_at": now + data.get("expires_in", 14400),
+    }
 
-    return _token_cache["access_token"]
+    return _token_cache[tenant]["access_token"]
 
 
 def _graphql(query, variables=None):
@@ -602,7 +616,7 @@ def debug_dump_product(query, by_id=False):
 def get_cached_ikas_context(urun_ismi):
 
     now = time.time()
-    key = _normalize_tr(urun_ismi)
+    key = (_tenant_key(), _normalize_tr(urun_ismi))
 
     if key in ikas_search_cache:
 
@@ -637,21 +651,23 @@ def get_cached_ikas_context(urun_ismi):
     return context, product_id
 
 
+
 def get_cached_ikas_context_by_id(product_id):
 
     # Aktif ürünün session'daki context'ini tazelemek için id ile çalışır;
     # link parser'ına ihtiyaç duymaz (tek kaynak İKAS).
     now = time.time()
+    key = (_tenant_key(), product_id)
 
-    if product_id in ikas_product_cache:
+    if key in ikas_product_cache:
 
-        cached = ikas_product_cache[product_id]
+        cached = ikas_product_cache[key]
 
         if now - cached["created_at"] < CACHE_TTL:
             print(f"🟢 IKAS Cache HIT (id): {product_id}")
             return cached["context"]
 
-        del ikas_product_cache[product_id]
+        del ikas_product_cache[key]
 
     print(f"🟡 IKAS Cache MISS (id): {product_id}")
 
@@ -666,7 +682,7 @@ def get_cached_ikas_context_by_id(product_id):
 
     context = build_ikas_ai_context(product)
 
-    ikas_product_cache[product_id] = {
+    ikas_product_cache[key] = {
         "context": context,
         "created_at": now
     }

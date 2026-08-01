@@ -14,13 +14,8 @@ import requests
 
 from openai import OpenAI
 
-from config import (
-    AUDIO_MODEL_NAME,
-    OPENAI_API_KEY,
-    IG_ACCESS_TOKEN,
-)
-
-client = OpenAI(api_key=OPENAI_API_KEY)
+import config
+from config import AUDIO_MODEL_NAME
 
 
 def download_attachment(url):
@@ -28,11 +23,11 @@ def download_attachment(url):
 
     response = requests.get(url, timeout=30)
 
-    # İmzalı/korumalı URL erişim isterse token'la tekrar dene
+    # İmzalı/korumalı URL erişim isterse AKTİF TENANT'ın token'ıyla tekrar dene
     if response.status_code in (401, 403):
         response = requests.get(
             url,
-            headers={"Authorization": f"Bearer {IG_ACCESS_TOKEN}"},
+            headers={"Authorization": f"Bearer {config.ig_access_token()}"},
             timeout=30,
         )
 
@@ -42,11 +37,13 @@ def download_attachment(url):
 
 
 def transcribe_audio(audio_bytes):
-    """Ses baytlarını Whisper ile Türkçe metne çevirir."""
+    """Ses baytlarını Whisper ile Türkçe metne çevirir (aktif tenant'ın OpenAI anahtarı)."""
 
     audio_file = io.BytesIO(audio_bytes)
 
     audio_file.name = "voice.ogg"
+
+    client = OpenAI(api_key=config.openai_api_key())
 
     transcription = client.audio.transcriptions.create(
         model=AUDIO_MODEL_NAME,
