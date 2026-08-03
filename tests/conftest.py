@@ -77,6 +77,21 @@ def env():
         message_service.processed_messages.clear()
     except Exception:
         pass
+    try:
+        from Services import setup_service
+        setup_service.reset_setup_cache()
+    except Exception:
+        pass
+    try:
+        from Services import ikas_service
+        ikas_service.invalidate()
+    except Exception:
+        pass
+    try:
+        from Services import openai_service
+        openai_service.invalidate_client()
+    except Exception:
+        pass
 
     yield db_module
 

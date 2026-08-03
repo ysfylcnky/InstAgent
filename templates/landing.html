@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InstaAgent · Instagram Yapay Zeka Satış Asistanı</title>
+<meta name="description" content="InstaAgent, mağazanıza Instagram DM'den gelen her mesaja saniyeler içinde yanıt verir; paylaşılan post/reel'den ürünü bulur, doğru renk ve bedeni seçer, siparişi sizin adınıza alır.">
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
+<style>
+:root{
+  --bg:#09070f; --bg-2:#0d0a1a;
+  --surface:#141024; --surface-2:#1b1533;
+  --border:rgba(255,255,255,.08); --border-strong:rgba(255,255,255,.16);
+  --text:#f5f3fb; --muted:#a7a2c4; --muted-2:#7d7899;
+  --violet:#a855f7; --pink:#e1306c; --orange:#f97316;
+  --grad:linear-gradient(135deg,#7c3aed 0%,#d946ef 48%,#f97316 100%);
+  --grad-dm:linear-gradient(135deg,#405de6 0%,#833ab4 55%,#c13584 100%);
+  --radius:18px; --radius-sm:12px; --t:.25s ease;
+  --maxw:1180px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Segoe UI',system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  background:var(--bg); color:var(--text); line-height:1.55;
+  -webkit-font-smoothing:antialiased; overflow-x:hidden;
+}
+a{color:inherit;text-decoration:none}
+img{max-width:100%}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+
+/* Aurora arka plan */
+body::before{
+  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(60% 50% at 78% 8%, rgba(124,58,237,.22), transparent 60%),
+    radial-gradient(50% 45% at 12% 20%, rgba(225,48,108,.16), transparent 60%),
+    radial-gradient(45% 40% at 60% 90%, rgba(249,115,22,.10), transparent 60%),
+    linear-gradient(180deg,var(--bg),var(--bg-2));
+}
+
+.grad-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* ---------- Nav ---------- */
+header.nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(12px);
+  background:rgba(9,7,15,.72);border-bottom:1px solid var(--border)}
+.nav-inner{display:flex;align-items:center;gap:28px;height:72px}
+.brand{display:flex;align-items:center;gap:12px;font-weight:800;font-size:19px}
+.brand .logo{width:40px;height:40px;border-radius:12px;background:var(--grad);
+  display:grid;place-items:center;box-shadow:0 6px 20px rgba(168,85,247,.35)}
+.brand .logo svg{width:22px;height:22px;color:#fff}
+.brand small{display:block;font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.2px}
+.nav-links{display:flex;gap:26px;margin-left:12px}
+.nav-links a{color:var(--muted);font-weight:600;font-size:15px;transition:color var(--t)}
+.nav-links a:hover{color:var(--text)}
+.nav-cta{margin-left:auto;display:flex;gap:12px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:8px;border:0;cursor:pointer;
+  font-weight:700;font-size:15px;padding:12px 20px;border-radius:12px;transition:transform var(--t),box-shadow var(--t),background var(--t);font-family:inherit}
+.btn:hover{transform:translateY(-1px)}
+.btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border-strong)}
+.btn-ghost:hover{background:rgba(255,255,255,.05)}
+.btn-grad{background:var(--grad);color:#fff;box-shadow:0 8px 24px rgba(168,85,247,.35)}
+.btn-grad:hover{box-shadow:0 12px 30px rgba(168,85,247,.45)}
+.nav-toggle{display:none;background:none;border:0;color:var(--text);font-size:24px;cursor:pointer;margin-left:auto}
+
+/* Mobil açılır menü (hamburger) */
+.mobile-menu{display:none;flex-direction:column;padding:8px 24px 20px;
+  border-top:1px solid var(--border);background:rgba(9,7,15,.97)}
+.mobile-menu.open{display:flex}
+.mobile-menu a{padding:13px 2px;color:var(--muted);font-weight:600;font-size:16px;
+  border-bottom:1px solid var(--border);transition:color var(--t)}
+.mobile-menu a:hover{color:var(--text)}
+.mobile-menu .btn{margin-top:14px;justify-content:center}
+@media(min-width:901px){.mobile-menu{display:none!important}}
+
+/* ---------- Hero ---------- */
+.hero{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center;padding:76px 0 90px}
+.badge{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;
+  color:var(--text);background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.28);
+  padding:7px 14px;border-radius:999px;margin-bottom:24px}
+.badge .dot{width:8px;height:8px;border-radius:50%;background:var(--violet);box-shadow:0 0 10px var(--violet)}
+.hero h1{font-size:56px;line-height:1.05;font-weight:800;letter-spacing:-1.5px;margin-bottom:22px}
+.hero p.lead{font-size:18px;color:var(--muted);max-width:520px;margin-bottom:32px}
+.hero-cta{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:22px}
+.hero-cta .btn{padding:15px 26px;font-size:16px}
+.trust{display:flex;gap:18px;flex-wrap:wrap;color:var(--muted-2);font-size:14px;font-weight:600}
+.trust span{display:inline-flex;align-items:center;gap:7px}
+.trust svg{width:16px;height:16px;color:var(--violet)}
+
+/* ---------- IG DM Mockup ---------- */
+.phone{background:linear-gradient(180deg,#151122,#100c1e);border:1px solid var(--border-strong);
+  border-radius:26px;padding:0;box-shadow:0 30px 80px rgba(0,0,0,.55);overflow:hidden;position:relative}
+.dm-head{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,rgba(124,58,237,.14),transparent)}
+.dm-ava{width:42px;height:42px;border-radius:50%;padding:2px;background:var(--grad)}
+.dm-ava div{width:100%;height:100%;border-radius:50%;background:#1b1533;display:grid;place-items:center;font-weight:800;color:#fff;font-size:15px}
+.dm-head .who b{font-size:15px}
+.dm-head .who small{display:block;color:#43d17a;font-size:12px;font-weight:600}
+.dm-head .cam{margin-left:auto;color:var(--muted-2)}
+.dm-body{padding:20px 18px;display:flex;flex-direction:column;gap:12px;max-height:520px}
+.msg{max-width:80%;padding:11px 15px;border-radius:20px;font-size:14.5px;line-height:1.45;animation:pop .5s both}
+.in{align-self:flex-start;background:#241d3a;border-bottom-left-radius:6px}
+.out{align-self:flex-end;background:var(--grad-dm);color:#fff;border-bottom-right-radius:6px;box-shadow:0 6px 18px rgba(131,58,180,.3)}
+.reel{align-self:flex-start;width:150px;border-radius:16px;overflow:hidden;border:1px solid var(--border-strong);background:#241d3a}
+.reel .thumb{height:120px;background:
+    radial-gradient(circle at 30% 30%, rgba(249,115,22,.6), transparent 55%),
+    linear-gradient(135deg,#833ab4,#c13584 60%,#f97316);position:relative;display:grid;place-items:center}
+.reel .thumb svg{width:34px;height:34px;color:#fff;filter:drop-shadow(0 2px 6px rgba(0,0,0,.4))}
+.reel .cap{padding:8px 10px;font-size:12px;color:var(--muted)}
+.reel .cap b{color:var(--text);display:block;font-size:12.5px}
+.typing{align-self:flex-start;background:#241d3a;padding:12px 16px;border-radius:20px;border-bottom-left-radius:6px;display:flex;gap:5px}
+.typing i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:blink 1.2s infinite}
+.typing i:nth-child(2){animation-delay:.2s}.typing i:nth-child(3){animation-delay:.4s}
+.reply-badge{position:absolute;right:-14px;bottom:34px;background:#0d0a1a;border:1px solid var(--border-strong);
+  border-radius:14px;padding:10px 14px;display:flex;align-items:center;gap:9px;box-shadow:0 12px 30px rgba(0,0,0,.5)}
+.reply-badge .b{width:30px;height:30px;border-radius:9px;background:var(--grad);display:grid;place-items:center}
+.reply-badge .b svg{width:16px;height:16px;color:#fff}
+.reply-badge b{font-size:15px}.reply-badge small{display:block;color:var(--muted);font-size:11px}
+@keyframes pop{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes blink{0%,60%,100%{opacity:.3}30%{opacity:1}}
+
+/* ---------- Sections ---------- */
+section{padding:84px 0}
+.sec-head{text-align:center;max-width:660px;margin:0 auto 52px}
+.sec-head .kicker{font-weight:800;font-size:13px;letter-spacing:2px;text-transform:uppercase;
+  background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sec-head h2{font-size:38px;font-weight:800;letter-spacing:-1px;margin:10px 0 12px}
+.sec-head p{color:var(--muted);font-size:17px}
+
+/* Özellikler */
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:28px;transition:transform var(--t),border-color var(--t),background var(--t)}
+.card:hover{transform:translateY(-4px);border-color:var(--border-strong);background:var(--surface-2)}
+.card .ico{width:48px;height:48px;border-radius:13px;background:rgba(168,85,247,.12);
+  border:1px solid rgba(168,85,247,.26);display:grid;place-items:center;margin-bottom:18px}
+.card .ico svg{width:24px;height:24px;color:var(--violet)}
+.card h3{font-size:18px;margin-bottom:9px}
+.card p{color:var(--muted);font-size:15px}
+
+/* Nasıl çalışır */
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;counter-reset:step}
+.step{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:26px;position:relative}
+.step .n{width:38px;height:38px;border-radius:11px;background:var(--grad);display:grid;place-items:center;
+  font-weight:800;color:#fff;margin-bottom:16px}
+.step h3{font-size:17px;margin-bottom:8px}.step p{color:var(--muted);font-size:14.5px}
+
+/* Fiyatlar */
+.pricing{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;align-items:stretch}
+.plan{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:32px;display:flex;flex-direction:column}
+.plan.pop{border-color:transparent;background:linear-gradient(var(--surface),var(--surface)) padding-box,var(--grad) border-box;border:1.5px solid transparent;position:relative}
+.plan.pop .tag{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--grad);
+  color:#fff;font-size:12px;font-weight:800;padding:5px 14px;border-radius:999px}
+.plan h3{font-size:20px;margin-bottom:6px}
+.plan .price{font-size:40px;font-weight:800;margin:8px 0 2px}
+.plan .price span{font-size:16px;color:var(--muted);font-weight:600}
+.plan .sub{color:var(--muted);font-size:14px;margin-bottom:22px}
+.plan ul{list-style:none;display:flex;flex-direction:column;gap:12px;margin-bottom:26px;flex:1}
+.plan li{display:flex;gap:10px;font-size:15px;color:var(--text)}
+.plan li svg{width:19px;height:19px;color:var(--violet);flex:none;margin-top:2px}
+.plan .btn{width:100%;justify-content:center}
+
+/* SSS */
+.faq{max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.q{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+.q button{width:100%;background:none;border:0;color:var(--text);font-family:inherit;font-size:16.5px;font-weight:700;
+  text-align:left;padding:20px 22px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:16px}
+.q button .plus{color:var(--violet);font-size:22px;transition:transform var(--t);flex:none}
+.q.open button .plus{transform:rotate(45deg)}
+.q .a{max-height:0;overflow:hidden;transition:max-height .3s ease;color:var(--muted);font-size:15px}
+.q .a p{padding:0 22px 20px}
+.q.open .a{max-height:240px}
+
+/* CTA band */
+.cta-band{background:linear-gradient(135deg,rgba(124,58,237,.18),rgba(225,48,108,.14));
+  border:1px solid var(--border-strong);border-radius:26px;padding:56px;text-align:center;position:relative;overflow:hidden}
+.cta-band h2{font-size:34px;font-weight:800;letter-spacing:-1px;margin-bottom:12px}
+.cta-band p{color:var(--muted);font-size:17px;margin-bottom:28px}
+
+/* Footer */
+footer{border-top:1px solid var(--border);padding:40px 0;color:var(--muted-2);font-size:14px}
+.foot-inner{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+
+/* Modal (talep formu) */
+.modal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:20px;
+  background:rgba(5,4,10,.7);backdrop-filter:blur(6px)}
+.modal.show{display:flex;animation:fade .2s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.modal-card{background:var(--surface);border:1px solid var(--border-strong);border-radius:22px;
+  width:100%;max-width:480px;padding:32px;position:relative;max-height:92vh;overflow:auto}
+.modal-card h3{font-size:24px;font-weight:800;margin-bottom:6px}
+.modal-card .sub{color:var(--muted);font-size:15px;margin-bottom:22px}
+.modal-card .close{position:absolute;top:16px;right:18px;background:none;border:0;color:var(--muted);font-size:26px;cursor:pointer}
+.field{margin-bottom:15px}
+.field label{display:block;font-size:13px;font-weight:700;color:var(--muted);margin-bottom:7px}
+.field input,.field textarea{width:100%;background:var(--bg-2);border:1px solid var(--border-strong);
+  border-radius:11px;padding:12px 14px;color:var(--text);font-family:inherit;font-size:15px;transition:border-color var(--t)}
+.field input:focus,.field textarea:focus{outline:0;border-color:var(--violet)}
+.field textarea{resize:vertical;min-height:74px}
+.form-msg{font-size:14px;padding:12px 14px;border-radius:11px;margin-bottom:14px;display:none}
+.form-msg.ok{display:block;background:rgba(67,209,122,.14);color:#43d17a;border:1px solid rgba(67,209,122,.3)}
+.form-msg.err{display:block;background:rgba(251,113,133,.14);color:#fb7185;border:1px solid rgba(251,113,133,.3)}
+
+@media(max-width:900px){
+  .nav-links,.nav-cta{display:none}
+  .nav-toggle{display:block}
+  .hero{grid-template-columns:1fr;gap:40px;padding:48px 0 60px}
+  .hero h1{font-size:40px}
+  .grid,.steps,.pricing{grid-template-columns:1fr}
+  .sec-head h2{font-size:30px}
+  .cta-band{padding:36px 22px}
+  .reply-badge{right:10px}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="/">
+      <span class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="6"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/></svg>
+      </span>
+      <span>InstaAgent<small>Instagram Yapay Zeka Satış Asistanı</small></span>
+    </a>
+    <nav class="nav-links">
+      <a href="#ozellikler">Özellikler</a>
+      <a href="#nasil-calisir">Nasıl Çalışır</a>
+      <a href="#fiyatlar">Fiyatlar</a>
+      <a href="#sss">SSS</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="btn btn-ghost" href="/login">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        Giriş Yap
+      </a>
+      <button class="btn btn-grad" data-open>Ücretsiz Dene</button>
+    </div>
+    <button class="nav-toggle" data-menu aria-label="Menüyü aç/kapat" aria-expanded="false">☰</button>
+  </div>
+  <div class="mobile-menu" id="mobileMenu">
+    <a href="#ozellikler" data-menu-link>Özellikler</a>
+    <a href="#nasil-calisir" data-menu-link>Nasıl Çalışır</a>
+    <a href="#fiyatlar" data-menu-link>Fiyatlar</a>
+    <a href="#sss" data-menu-link>SSS</a>
+    <a href="/login" data-menu-link>Giriş Yap</a>
+    <button class="btn btn-grad" data-open>Ücretsiz Dene</button>
+  </div>
+</header>
+
+<!-- HERO -->
+<main class="wrap">
+  <section class="hero">
+    <div>
+      <span class="badge"><span class="dot"></span>Instagram DM'de 7/24 otomatik satış</span>
+      <h1>Müşteriniz DM atsın,<br><span class="grad-text">yapay zeka satışı kapatsın.</span></h1>
+      <p class="lead">InstaAgent, mağazanıza Instagram'dan gelen her mesaja saniyeler içinde yanıt verir; müşterinin paylaştığı post/reel'den ürünü bulur, doğru renk ve bedeni seçer, siparişi sizin adınıza alır. Siz uyurken bile satış devam eder.</p>
+      <div class="hero-cta">
+        <button class="btn btn-grad" data-open>14 Gün Ücretsiz Deneyin →</button>
+        <a class="btn btn-ghost" href="#nasil-calisir">Nasıl Çalışır?</a>
+      </div>
+      <div class="trust">
+        <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Kredi kartı gerekmez</span>
+        <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Kurulum dakikalar sürer</span>
+        <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>İKAS entegrasyonu</span>
+      </div>
+    </div>
+
+    <!-- IG DM mockup -->
+    <div class="phone">
+      <div class="dm-head">
+        <div class="dm-ava"><div>NM</div></div>
+        <div class="who"><b>nilnurmoda</b><small>● Aktif</small></div>
+        <span class="cam"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m23 7-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></span>
+      </div>
+      <div class="dm-body">
+        <div class="reel">
+          <div class="thumb"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
+          <div class="cap"><b>Vintage Gömlek</b>bir reel paylaştı</div>
+        </div>
+        <div class="msg in">Bu gömlek stokta var mı? 👀</div>
+        <div class="msg out">Çok şık bir seçim ✨ Vintage Gömlek — bej, pudra ve bebe mavi renkleriyle, 38–44 arası tüm bedenler mevcut. Fiyatı <b>549 TL</b>.</div>
+        <div class="msg in">Pudra, M beden alayım. Kapıda ödeme</div>
+        <div class="msg out">Harika seçim! 🛍️ Siparişi tamamlamak için ad-soyad ve adresinizi paylaşır mısınız?</div>
+        <div class="msg in">Ayşe Demir, Beşiktaş / İstanbul...</div>
+        <div class="msg out">Siparişiniz alındı ✅ En kısa sürede hazırlanıp kargoya verilecek. Teşekkürler Ayşe 💕</div>
+        <div class="typing"><i></i><i></i><i></i></div>
+      </div>
+      <div class="reply-badge">
+        <span class="b"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 3 14h7l-1 8 10-12h-7z"/></svg></span>
+        <span><b>~7 sn</b><small>ortalama yanıt</small></span>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ÖZELLİKLER -->
+<section id="ozellikler">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="kicker">Özellikler</div>
+      <h2>Bir satış temsilcisi gibi, ama 7/24</h2>
+      <p>Instagram'ın kendine özgü satış akışına göre tasarlandı — link değil, paylaşılan gönderi.</p>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="3.5"/><circle cx="17.5" cy="6.5" r="1"/></svg></div>
+        <h3>Paylaşılan post/reel'den ürün bulma</h3>
+        <p>Müşteri ürünün gönderisini DM olarak paylaşınca, açıklamadan ürünü tanır ve katalogda anında bulur.</p>
+      </div>
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg></div>
+        <h3>İKAS entegrasyonu</h3>
+        <p>Gerçek zamanlı fiyat, renk, beden ve stok bilgisi doğrudan mağazanızın İKAS kataloğundan gelir.</p>
+      </div>
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4"/></svg></div>
+        <h3>Sesli mesajı anlar</h3>
+        <p>Müşteri sesli mesaj atarsa metne çevirir ve aynı ürün akışını kesintisiz sürdürür.</p>
+      </div>
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg></div>
+        <h3>Otomatik sipariş alma</h3>
+        <p>Renk, beden, adet ve adresi netleştirir; onay sonrası siparişi oluşturur ve size bildirim gönderir.</p>
+      </div>
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/></svg></div>
+        <h3>Panel & raporlar</h3>
+        <p>Konuşmalar, müşteriler, siparişler ve AI kullanım maliyeti tek panelde; CSV dışa aktarım dahil.</p>
+      </div>
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <h3>Her mağaza izole</h3>
+        <p>Çok kiracılı güvenli mimari: verileriniz, ayarlarınız ve müşterileriniz yalnızca size aittir.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- NASIL ÇALIŞIR -->
+<section id="nasil-calisir" style="background:linear-gradient(180deg,transparent,rgba(124,58,237,.05),transparent)">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="kicker">Nasıl Çalışır</div>
+      <h2>Dört adımda yayında</h2>
+      <p>Teknik bilgi gerekmez; kurulum sihirbazı elinizden tutar.</p>
+    </div>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><h3>Instagram'ı bağla</h3><p>İşletme Instagram hesabınızı güvenli bağlantıyla ekleyin.</p></div>
+      <div class="step"><div class="n">2</div><h3>Kataloğu bağla</h3><p>İKAS mağazanızı bağlayın; ürünler otomatik senkronize olsun.</p></div>
+      <div class="step"><div class="n">3</div><h3>AI'ı ayarla</h3><p>Mağaza dilini, IBAN ve satış tercihlerinizi belirleyin.</p></div>
+      <div class="step"><div class="n">4</div><h3>Satışa başla</h3><p>DM'ler otomatik yanıtlanır, siparişler size düşer. Hepsi bu.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- FİYATLAR -->
+<section id="fiyatlar">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="kicker">Fiyatlar</div>
+      <h2>Mağazanıza göre ölçeklenir</h2>
+      <p>14 gün ücretsiz deneyin; istediğiniz zaman iptal edin.</p>
+    </div>
+    <div class="pricing">
+      <div class="plan">
+        <h3>Başlangıç</h3>
+        <div class="price">₺1.490<span>/ay</span></div>
+        <div class="sub">Yeni başlayan butikler için</div>
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>1 Instagram hesabı</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Aylık 1.000 konuşma</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>İKAS entegrasyonu</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Panel & raporlar</li>
+        </ul>
+        <button class="btn btn-ghost" data-open>Ücretsiz Başla</button>
+      </div>
+      <div class="plan pop">
+        <span class="tag">EN POPÜLER</span>
+        <h3>Profesyonel</h3>
+        <div class="price">₺2.990<span>/ay</span></div>
+        <div class="sub">Büyüyen mağazalar için</div>
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>1 Instagram hesabı</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Aylık 5.000 konuşma</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Sesli mesaj + öncelikli AI</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Öncelikli destek</li>
+        </ul>
+        <button class="btn btn-grad" data-open>Ücretsiz Başla</button>
+      </div>
+      <div class="plan">
+        <h3>Kurumsal</h3>
+        <div class="price">Özel</div>
+        <div class="sub">Çoklu mağaza & yüksek hacim</div>
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Sınırsız konuşma</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Çoklu hesap yönetimi</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Özel entegrasyonlar</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Özel hesap yöneticisi</li>
+        </ul>
+        <button class="btn btn-ghost" data-open>Bize Ulaşın</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SSS -->
+<section id="sss">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="kicker">SSS</div>
+      <h2>Sık sorulan sorular</h2>
+    </div>
+    <div class="faq">
+      <div class="q"><button>InstaAgent hesabımın şifresini görür mü?<span class="plus">+</span></button><div class="a"><p>Hayır. Bağlantı Meta'nın resmî yetkilendirmesiyle yapılır; erişim anahtarınız şifreli saklanır ve yalnızca sizin mağazanız için kullanılır.</p></div></div>
+      <div class="q"><button>Kurulum ne kadar sürer?<span class="plus">+</span></button><div class="a"><p>Genellikle birkaç dakika. Instagram hesabınızı ve İKAS kataloğunuzu bağladıktan sonra sihirbaz gerisini halleder.</p></div></div>
+      <div class="q"><button>Müşteri paylaştığı gönderiden ürünü nasıl buluyor?<span class="plus">+</span></button><div class="a"><p>Müşteri bir post/reel paylaştığında InstaAgent açıklamadaki ürün adını çıkarır ve İKAS kataloğunuzda arayarak doğru ürünü eşleştirir.</p></div></div>
+      <div class="q"><button>Birden fazla mağazam var, tek panelden yönetebilir miyim?<span class="plus">+</span></button><div class="a"><p>Evet. Çok kiracılı mimaride her mağaza kendi hesabı, ayarları ve verileriyle tamamen izole çalışır. Kurumsal plan çoklu hesabı kapsar.</p></div></div>
+      <div class="q"><button>Verilerim güvende mi?<span class="plus">+</span></button><div class="a"><p>Her tenant'ın konuşmaları, müşterileri ve sırları veritabanı seviyesinde izole ve şifrelidir; başka bir mağaza verilerinize erişemez.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section>
+  <div class="wrap">
+    <div class="cta-band">
+      <h2>Bugün başlayın, ilk siparişinizi bot alsın</h2>
+      <p>14 gün ücretsiz. Kredi kartı gerekmez, istediğiniz an iptal edin.</p>
+      <button class="btn btn-grad" data-open style="padding:15px 30px;font-size:16px">Ücretsiz Deneyin →</button>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-inner">
+    <div class="brand" style="font-size:16px">
+      <span class="logo" style="width:32px;height:32px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="6"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/></svg></span>
+      <span>InstaAgent</span>
+    </div>
+    <div>© 2026 InstaAgent · Mumi Fashion. Tüm hakları saklıdır.</div>
+    <div style="display:flex;gap:18px;flex-wrap:wrap">
+      <a href="/privacy" style="color:var(--muted)">Gizlilik</a>
+      <a href="/terms" style="color:var(--muted)">Koşullar</a>
+      <a href="/login" style="color:var(--muted)">Giriş Yap</a>
+    </div>
+  </div>
+</footer>
+
+<!-- MODAL: talep formu -->
+<div class="modal" id="modal">
+  <div class="modal-card">
+    <button class="close" data-close>&times;</button>
+    <h3>Ücretsiz deneyin</h3>
+    <p class="sub">Bilgilerinizi bırakın, ekibimiz kurulumu birlikte tamamlamak için sizinle iletişime geçsin.</p>
+    <div class="form-msg" id="formMsg"></div>
+    <form id="signupForm">
+      <div class="field"><label>Mağaza adı *</label><input name="store_name" required placeholder="Nilnur Moda"></div>
+      <div class="field"><label>Yetkili ad-soyad *</label><input name="contact_name" required placeholder="Ayşe Demir"></div>
+      <div class="field"><label>E-posta *</label><input name="email" type="email" required placeholder="ornek@magaza.com"></div>
+      <div class="field"><label>Telefon</label><input name="phone" placeholder="05xx xxx xx xx"></div>
+      <div class="field"><label>Instagram kullanıcı adı</label><input name="instagram" placeholder="@nilnurmoda"></div>
+      <div class="field"><label>Mesajınız</label><textarea name="message" placeholder="Kısaca ihtiyacınızdan bahsedin (opsiyonel)"></textarea></div>
+      <button class="btn btn-grad" type="submit" style="width:100%;justify-content:center" id="submitBtn">Talebi Gönder</button>
+    </form>
+  </div>
+</div>
+
+<script>
+(function(){
+  var modal=document.getElementById('modal');
+  var menuBtn=document.querySelector('[data-menu]');
+  var mobileMenu=document.getElementById('mobileMenu');
+  function closeMenu(){if(mobileMenu){mobileMenu.classList.remove('open');if(menuBtn)menuBtn.setAttribute('aria-expanded','false');}}
+  function open(){closeMenu();modal.classList.add('show');document.body.style.overflow='hidden'}
+  function close(){modal.classList.remove('show');document.body.style.overflow=''}
+  document.querySelectorAll('[data-open]').forEach(function(b){b.addEventListener('click',open)});
+  document.querySelectorAll('[data-close]').forEach(function(b){b.addEventListener('click',close)});
+  modal.addEventListener('click',function(e){if(e.target===modal)close()});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'){close();closeMenu();}});
+
+  // Mobil menü aç/kapat
+  if(menuBtn&&mobileMenu){
+    menuBtn.addEventListener('click',function(){
+      var isOpen=mobileMenu.classList.toggle('open');
+      menuBtn.setAttribute('aria-expanded',isOpen?'true':'false');
+    });
+  }
+  document.querySelectorAll('[data-menu-link]').forEach(function(a){
+    a.addEventListener('click',closeMenu);
+  });
+
+  // SSS accordion
+  document.querySelectorAll('.q button').forEach(function(b){
+    b.addEventListener('click',function(){b.parentElement.classList.toggle('open')});
+  });
+
+  // Talep formu
+  var form=document.getElementById('signupForm');
+  var msg=document.getElementById('formMsg');
+  var btn=document.getElementById('submitBtn');
+  form.addEventListener('submit',function(e){
+    e.preventDefault();
+    msg.className='form-msg';
+    var data={};new FormData(form).forEach(function(v,k){data[k]=v});
+    btn.disabled=true;btn.textContent='Gönderiliyor...';
+    fetch('/kayit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
+      .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
+      .then(function(res){
+        if(res.ok && res.j.ok){
+          msg.className='form-msg ok';
+          msg.textContent='Talebiniz alındı! En kısa sürede sizinle iletişime geçeceğiz. 💜';
+          form.reset();
+        }else{
+          msg.className='form-msg err';
+          msg.textContent=(res.j && res.j.error) || 'Bir hata oluştu, lütfen tekrar deneyin.';
+        }
+      })
+      .catch(function(){msg.className='form-msg err';msg.textContent='Bağlantı hatası, lütfen tekrar deneyin.';})
+      .finally(function(){btn.disabled=false;btn.textContent='Talebi Gönder';});
+  });
+})();
+</script>
+</body>
+</html>

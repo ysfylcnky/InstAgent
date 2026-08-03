@@ -88,6 +88,8 @@ from Services.tenant_service import (
     extract_ig_account_id,
     resolve_tenant_by_ig_account_id,
 )
+from Services.meta_verify import verify_webhook_signature, parse_signed_request
+from Services import gdpr_service
 from Services import onboarding_service
 from Services import meta_oauth_service
 from Services.dashboard_service import (
@@ -724,15 +726,27 @@ chat_sessions = SessionRegistry(build_session_store())
 
 @app.middleware("http")
 async def _setup_gate(request: Request, call_next):
-    """Kurulum tamamlanmamışsa panel sayfalarını Kurulum ekranına yönlendirir."""
+    """Kurulum tamamlanmamışsa panel sayfalarını Kurulum ekranına yönlendirir.
+
+    Kurulum durumu AKTİF TENANT'a göredir; bu yüzden JWT'den tenant çözülüp
+    o tenant bağlamında kontrol edilir. Oturum yoksa yönlendirme yapılmaz —
+    kimlik doğrulama katmanı (require_dashboard_auth) devreye girer (→ /login).
+    """
     path = request.url.path
 
     if path.startswith("/dashboard") and path != "/dashboard/settings/setup":
-        try:
-            if not is_setup_complete():
-                return RedirectResponse(url="/dashboard/settings/setup", status_code=307)
-        except Exception:
-            pass
+        ctx = verify_token(request.cookies.get(COOKIE_NAME))
+        if ctx is not None:
+            scope_token = current_tenant_id.set(ctx["tenant_id"])
+            try:
+                if not is_setup_complete():
+                    return RedirectResponse(
+                        url="/dashboard/settings/setup", status_code=307
+                    )
+            except Exception:
+                pass
+            finally:
+                current_tenant_id.reset(scope_token)
 
     return await call_next(request)
 
@@ -837,9 +851,70 @@ async def logout():
     return response
 
 
-@app.get("/")
-def home():
+@app.get("/", response_class=HTMLResponse)
+@app.get("/instagent", response_class=HTMLResponse)
+async def landing_page(request: Request):
+    """Tanıtım (landing) sayfası. ig.mumifashion.com/instagent altında sunulur."""
+    return templates.TemplateResponse(request=request, name="landing.html", context={})
+
+
+@app.get("/privacy", response_class=HTMLResponse)
+async def privacy_policy(request: Request):
+    """Gizlilik Politikası — PUBLIC (auth'suz). Meta App Review'a bu URL verilir."""
+    return templates.TemplateResponse(request=request, name="privacy.html", context={})
+
+
+@app.get("/terms", response_class=HTMLResponse)
+async def terms_of_service(request: Request):
+    """Kullanım Koşulları — PUBLIC (auth'suz)."""
+    return templates.TemplateResponse(request=request, name="terms.html", context={})
+
+
+@app.get("/healthz")
+def healthz():
     return {"status": "ok"}
+
+
+@app.post("/kayit")
+async def signup_request(request: Request):
+    """Landing 'Ücretsiz Dene' talep formu — lead kaydı (public)."""
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    store_name = (body.get("store_name") or "").strip()
+    contact_name = (body.get("contact_name") or "").strip()
+    email = (body.get("email") or "").strip().lower()
+
+    if not store_name or not contact_name or "@" not in email:
+        return JSONResponse(
+            status_code=400,
+            content={"ok": False, "error": "Mağaza adı, ad-soyad ve geçerli e-posta zorunlu."},
+        )
+
+    try:
+        from Services.db import get_session
+        from Services.models import SignupRequest
+
+        with get_session(scoped=False) as s:
+            s.add(SignupRequest(
+                store_name=store_name[:255],
+                contact_name=contact_name[:255],
+                email=email[:255],
+                phone=((body.get("phone") or "").strip()[:64]) or None,
+                instagram=((body.get("instagram") or "").strip()[:255]) or None,
+                message=(body.get("message") or "").strip() or None,
+                status="new",
+            ))
+    except Exception as e:
+        print("🔴 signup_request hatası:", e)
+        return JSONResponse(
+            status_code=500,
+            content={"ok": False, "error": "Kaydedilemedi, lütfen tekrar deneyin."},
+        )
+
+    return {"ok": True}
 
 
 @app.get("/favicon.ico")
@@ -1175,6 +1250,28 @@ async def admin_create_tenant(request: Request, ctx: dict = Depends(require_supe
     return {"ok": True, "tenant": res}
 
 
+@app.get("/admin/platform/signups")
+def admin_list_signups(ctx: dict = Depends(require_superadmin)):
+    """Landing talep formundan gelen lead'leri listeler (super-admin)."""
+    from Services.db import get_session
+    from Services.models import SignupRequest
+
+    with get_session(scoped=False) as s:
+        rows = (
+            s.query(SignupRequest)
+            .order_by(SignupRequest.created_at.desc())
+            .limit(200)
+            .all()
+        )
+        items = [{
+            "id": r.id, "store_name": r.store_name, "contact_name": r.contact_name,
+            "email": r.email, "phone": r.phone, "instagram": r.instagram,
+            "message": r.message, "status": r.status,
+            "created_at": r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else None,
+        } for r in rows]
+    return {"items": items}
+
+
 @app.get("/admin/connect/instagram")
 def admin_connect_instagram(ctx: dict = Depends(require_dashboard_auth)):
     """Aktif tenant için Instagram OAuth authorize URL'i üretir (state ile)."""
@@ -1198,6 +1295,100 @@ def instagram_oauth_callback(code: str = None, state: str = None):
         return JSONResponse(status_code=400, content={"ok": False, "error": str(e)})
 
     return {"ok": True, "connected": res}
+
+
+# ======================================================================
+# Meta App Review callback'leri — Data Deletion + Deauthorize
+# ----------------------------------------------------------------------
+# Her ikisi de gövdede `signed_request` alır (Meta imzalı). İmza
+# META_APP_SECRET ile doğrulanır; geçersiz/eksik imzada 403. Sır loglanmaz.
+# ======================================================================
+
+async def _extract_signed_request(request: Request):
+    """Gövdeden `signed_request` değerini alır (form-encoded ya da JSON)."""
+    ctype = request.headers.get("content-type", "")
+    if "application/json" in ctype:
+        try:
+            body = await request.json()
+            return (body or {}).get("signed_request") if isinstance(body, dict) else None
+        except Exception:
+            return None
+    try:
+        form = await request.form()
+        return form.get("signed_request")
+    except Exception:
+        return None
+
+
+@app.post("/data-deletion")
+async def data_deletion_callback(request: Request):
+    """Meta Veri Silme Talebi callback'i.
+
+    İmzalı `signed_request` içinden `user_id` (IGSID) alınır ve bu kullanıcının
+    tüm müşteri verisi silinir. Meta'nın beklediği JSON döner:
+    {"url": "<durum takip url'i>", "confirmation_code": "<kod>"}.
+    """
+    signed_request = await _extract_signed_request(request)
+    app_secret = config.META_APP_SECRET
+
+    data = parse_signed_request(signed_request, app_secret) if app_secret else None
+    if data is None:
+        return JSONResponse(
+            status_code=403, content={"error": "invalid signed_request"}
+        )
+
+    user_id = data.get("user_id")
+    confirmation_code, deleted = gdpr_service.handle_data_deletion(user_id)
+
+    total = sum(deleted.values())
+    tail = str(user_id)[-4:] if user_id else "?"
+    print(f"🧹 Veri silme talebi işlendi (…{tail}) — {total} kayıt silindi.")
+
+    base = str(request.base_url).rstrip("/")
+    return {
+        "url": f"{base}/data-deletion/status?code={confirmation_code}",
+        "confirmation_code": confirmation_code,
+    }
+
+
+@app.get("/data-deletion/status", response_class=HTMLResponse)
+async def data_deletion_status(request: Request, code: str = ""):
+    """Veri silme talebi durum sayfası (Meta'ya döndürülen URL buraya işaret eder).
+
+    Silme senkron yapıldığından talep alındıysa veri zaten silinmiştir; sayfa
+    kullanıcıya bunu bildirir. Public erişilebilir (auth'suz)."""
+    return templates.TemplateResponse(
+        request=request,
+        name="deletion_status.html",
+        context={"code": code},
+    )
+
+
+@app.post("/deauthorize")
+async def deauthorize_callback(request: Request):
+    """Meta Deauthorize callback'i — kullanıcı uygulamayı kaldırınca çağrılır.
+
+    İmzalı `signed_request` doğrulanır; ilgili tenant'ın Instagram bağlantısı
+    pasifleştirilir (status=inactive + token temizlenir). Sır loglanmaz."""
+    signed_request = await _extract_signed_request(request)
+    app_secret = config.META_APP_SECRET
+
+    data = parse_signed_request(signed_request, app_secret) if app_secret else None
+    if data is None:
+        return JSONResponse(
+            status_code=403, content={"error": "invalid signed_request"}
+        )
+
+    user_id = data.get("user_id")
+    res = gdpr_service.deauthorize_tenant(user_id)
+
+    tail = str(user_id)[-4:] if user_id else "?"
+    if res.get("deactivated"):
+        print(f"🔌 Deauthorize (…{tail}) — tenant bağlantısı pasifleştirildi.")
+    else:
+        print(f"🔌 Deauthorize (…{tail}) — eşleşen tenant yok (fail-safe).")
+
+    return {"ok": True}
 
 
 # ======================================================================
@@ -1230,7 +1421,26 @@ async def instagram_webhook(request: Request):
     İstek başında temiz bir oturum kimlik haritası açılır; istek nasıl
     sonlanırsa sonlansın dokunulan oturumlar finally'de kalıcı depoya yazılır.
     """
-    body = await request.json()
+    # Ham gövde İMZA için gerekli — parse edilmeden önce okunur.
+    raw_body = await request.body()
+
+    # X-Hub-Signature-256 doğrulaması (Meta App Review zorunlu). META_APP_SECRET
+    # tanımlıysa imza ZORUNLU: eksik/uyuşmayan imzada 403, gövde işlenmez.
+    # Karşılaştırma sabit-zamanlı; sır loglanmaz.
+    app_secret = config.META_APP_SECRET
+    if app_secret:
+        signature = request.headers.get("X-Hub-Signature-256")
+        if not verify_webhook_signature(raw_body, signature, app_secret):
+            print("⛔ Webhook imzası geçersiz/eksik — istek reddedildi (403).")
+            return PlainTextResponse(content="invalid signature", status_code=403)
+    else:
+        print("⚠️ META_APP_SECRET tanımlı değil — webhook imza doğrulaması ATLANDI "
+              "(üretimde META_APP_SECRET tanımlanmalıdır).")
+
+    try:
+        body = json.loads(raw_body)
+    except Exception:
+        return {"status": "ignored"}
 
     if body.get("object") != "instagram":
         # Bu uç yalnız Instagram mesajlaşma olaylarını işler.

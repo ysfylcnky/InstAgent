@@ -6,7 +6,18 @@ from sqlalchemy import select
 from Services.db import get_session, tenant_scope
 from Services.models import Tenant, User, Setting
 from Services import onboarding_service, auth_service, tenant_service, settings_service
-from conftest import _bcrypt  # noqa (env hazır)
+from Services import setup_service
+from conftest import _bcrypt, TENANT_A, TENANT_B  # noqa (env hazır)
+
+
+_REQUIRED = {
+    "IG_ACCOUNT_ID": "17800000000000123",
+    "IG_ACCESS_TOKEN": "tok",
+    "OPENAI_API_KEY": "sk-abc",
+    "IKAS_STORE_NAME": "store",
+    "IKAS_CLIENT_ID": "cid",
+    "IKAS_CLIENT_SECRET": "csecret",
+}
 
 
 def _tenant_count():
@@ -89,3 +100,50 @@ def test_validation_errors(env):
         onboarding_service.create_tenant("T", "not-an-email", "parola12345")
     with pytest.raises(ValueError):
         onboarding_service.create_tenant("T", "a@x.com", "short")
+
+
+# ----------------------------------------------------------------------
+# Faz B2 — Kurulum tamamlanması AKTİF TENANT'a göredir (per-tenant gating).
+# ----------------------------------------------------------------------
+
+def test_setup_completion_is_per_tenant(env, monkeypatch):
+    # Platform (.env) zorunlusu hazır olsun; tenant DB kontrolü test edilecek.
+    monkeypatch.setenv("VERIFY_TOKEN", "vt-test")
+    setup_service.reset_setup_cache()
+
+    complete = dict(_REQUIRED)
+    complete["SETUP_COMPLETED"] = "1"
+    with tenant_scope(TENANT_A):
+        settings_service.save_stored_settings(complete)
+
+    # A kurulumu tamam; B'ye hiçbir şey yazılmadı → yalnız A "tamam".
+    with tenant_scope(TENANT_A):
+        assert setup_service.is_setup_complete(db_ok=True) is True
+    with tenant_scope(TENANT_B):
+        assert setup_service.is_setup_complete(db_ok=True) is False
+
+
+def test_incomplete_when_required_setting_missing(env, monkeypatch):
+    monkeypatch.setenv("VERIFY_TOKEN", "vt-test")
+    setup_service.reset_setup_cache()
+
+    partial = dict(_REQUIRED)
+    del partial["IKAS_CLIENT_SECRET"]          # bir zorunlu eksik
+    partial["SETUP_COMPLETED"] = "1"
+    with tenant_scope(TENANT_A):
+        settings_service.save_stored_settings(partial)
+
+    with tenant_scope(TENANT_A):
+        assert setup_service.is_setup_complete(db_ok=True) is False
+
+
+def test_incomplete_when_flag_not_set(env, monkeypatch):
+    monkeypatch.setenv("VERIFY_TOKEN", "vt-test")
+    setup_service.reset_setup_cache()
+
+    # Tüm zorunlular dolu ama SETUP_COMPLETED yok → henüz tamam değil.
+    with tenant_scope(TENANT_A):
+        settings_service.save_stored_settings(dict(_REQUIRED))
+
+    with tenant_scope(TENANT_A):
+        assert setup_service.is_setup_complete(db_ok=True) is False

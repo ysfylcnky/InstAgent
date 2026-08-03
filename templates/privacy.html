@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InstaAgent — Gizlilik Politikası</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
+    <style>
+        :root{
+            --bg:#0b1120; --card:#131c31; --border:#243049;
+            --text:#e6ecf7; --muted:#8291ad; --accent:#E1306C;
+            --ig-gradient:linear-gradient(135deg,#405DE6,#833AB4,#C13584,#E1306C,#FD1D1D,#F56040,#FCAF45);
+        }
+        *{ box-sizing:border-box; margin:0; padding:0; }
+        body{
+            font-family:-apple-system,"Segoe UI",Roboto,sans-serif;
+            background:radial-gradient(1200px 600px at 50% -10%,#16233f 0%,var(--bg) 55%);
+            color:var(--text); line-height:1.7; min-height:100vh; padding:40px 20px;
+        }
+        .wrap{ max-width:820px; margin:0 auto; }
+        .brand{ display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+        .brand-icon{
+            width:44px; height:44px; border-radius:12px; background:var(--ig-gradient);
+            color:#fff; display:flex; align-items:center; justify-content:center;
+            font-size:22px; font-weight:700;
+        }
+        .brand h1{ font-size:20px; font-weight:700; }
+        .brand span{ font-size:12px; color:var(--muted); }
+        .card{
+            background:var(--card); border:1px solid var(--border); border-radius:16px;
+            padding:34px 32px; margin-top:24px; box-shadow:0 24px 60px rgba(0,0,0,.4);
+        }
+        h2{ font-size:22px; margin-bottom:6px; }
+        .updated{ color:var(--muted); font-size:13px; margin-bottom:24px; }
+        h3{ font-size:16px; margin:26px 0 10px; color:#fff; }
+        p, li{ color:#c8d2e6; font-size:14.5px; }
+        ul{ margin:8px 0 8px 20px; }
+        li{ margin:5px 0; }
+        a{ color:var(--accent); text-decoration:none; }
+        a:hover{ text-decoration:underline; }
+        strong{ color:var(--text); }
+        .note{
+            margin-top:10px; padding:12px 14px; background:rgba(225,48,108,.08);
+            border:1px solid rgba(225,48,108,.25); border-radius:10px;
+            font-size:13.5px; color:#f4c4d6;
+        }
+        footer{ margin-top:28px; text-align:center; color:var(--muted); font-size:12.5px; }
+        footer a{ color:var(--muted); }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="brand">
+            <div class="brand-icon">◎</div>
+            <div>
+                <h1>InstaAgent</h1>
+                <span>Yapay Zeka Satış Asistanı</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Gizlilik Politikası</h2>
+            <p class="updated">Son güncelleme: 3 Ağustos 2026</p>
+
+            <p>
+                InstaAgent ("Hizmet"), işletmelerin Instagram Direct mesajlarını yapay zeka
+                ile otomatik yanıtlamasını ve sipariş almasını sağlayan bir SaaS ürünüdür.
+                Bu politika, Hizmet'i kullanan işletmelerin ("Mağaza") ve o işletmelere
+                Instagram üzerinden mesaj gönderen son kullanıcıların ("Müşteri") verilerini
+                nasıl işlediğimizi açıklar.
+            </p>
+
+            <h3>1. İşlediğimiz Veriler</h3>
+            <ul>
+                <li><strong>Instagram mesajlaşma verisi:</strong> Müşteri'nin gönderdiği
+                    metin/sesli mesajların içeriği, Instagram kullanıcı kimliği (IGSID) ve
+                    mesaj zaman damgaları.</li>
+                <li><strong>Sipariş bilgileri:</strong> Müşteri satın alma sürecinde paylaşırsa
+                    ad-soyad, teslimat adresi, telefon ve ürün/beden/renk tercihleri.</li>
+                <li><strong>Mağaza yapılandırması:</strong> Mağaza'nın Instagram Business hesap
+                    kimliği ve erişim token'ı, İKAS/OpenAI entegrasyon anahtarları.</li>
+                <li><strong>Kullanım kayıtları:</strong> Yapay zeka isteklerinin maliyet ve
+                    performans ölçümleri (ürün faturalandırma ve raporlama için).</li>
+            </ul>
+
+            <h3>2. Verileri Nasıl Kullanırız</h3>
+            <ul>
+                <li>Müşteri mesajlarına otomatik yanıt üretmek ve ürün önermek.</li>
+                <li>Sipariş oluşturmak ve Mağaza'yı bilgilendirmek.</li>
+                <li>Mağaza'ya sohbet, müşteri ve kullanım raporları sunmak.</li>
+            </ul>
+            <p>
+                Verileri reklam amacıyla kullanmaz, satmaz veya Hizmet'in işletilmesi dışında
+                üçüncü taraflarla paylaşmayız.
+            </p>
+
+            <h3>3. Veri Güvenliği ve İzolasyon</h3>
+            <ul>
+                <li><strong>Kiracı izolasyonu:</strong> Her Mağaza'nın verisi <em>tenant_id</em>
+                    ile mantıksal olarak ayrılır; bir Mağaza başka bir Mağaza'nın verisine
+                    erişemez (veritabanı seviyesinde zorunlu kılınır).</li>
+                <li><strong>Şifreleme:</strong> Instagram erişim token'ı ve entegrasyon
+                    anahtarları gibi sırlar veritabanında Fernet (AES-128-CBC + HMAC) ile
+                    <em>şifreli</em> saklanır; düz metin tutulmaz.</li>
+                <li><strong>Erişim:</strong> Panel erişimi kimlik doğrulaması (JWT, httpOnly
+                    çerez) ile korunur.</li>
+            </ul>
+
+            <h3>4. Üçüncü Taraf Hizmetler</h3>
+            <p>Hizmet aşağıdaki sağlayıcıları kullanır:</p>
+            <ul>
+                <li><strong>Meta / Instagram:</strong> Mesaj alışverişi (Instagram Messaging API).</li>
+                <li><strong>OpenAI:</strong> Mesaj içeriğinin yanıt üretimi için işlenmesi.</li>
+                <li><strong>İKAS:</strong> Mağaza ürün kataloğunda arama.</li>
+            </ul>
+
+            <h3>5. Saklama Süresi</h3>
+            <p>
+                Müşteri mesajları ve sipariş kayıtları, Mağaza'ya hizmet sunulduğu ve yasal
+                yükümlülüklerin gerektirdiği süre boyunca saklanır. Mağaza hesabını kapattığında
+                veya bir Müşteri silme talep ettiğinde ilgili veri kaldırılır.
+            </p>
+
+            <h3>6. Veri Silme Hakkı</h3>
+            <p>
+                Bir Müşteri, kendisine ait verinin silinmesini talep edebilir. Instagram
+                üzerinden uygulama iznini kaldırdığınızda Meta, otomatik veri silme talebini
+                sistemimize iletir ve ilgili Instagram kimliğine ait tüm mesaj, sipariş ve
+                müşteri kayıtları silinir. Silme talebini doğrudan da iletebilirsiniz:
+            </p>
+            <div class="note">
+                Veri silme talebi ucu: <strong>/data-deletion</strong> — Talep işlendiğinde,
+                durumunu takip edebileceğiniz benzersiz bir onay kodu döndürülür.
+            </div>
+
+            <h3>7. Değişiklikler</h3>
+            <p>
+                Bu politika güncellenebilir. Önemli değişikliklerde bu sayfa üzerinden
+                bilgilendirme yapılır.
+            </p>
+
+            <h3>8. İletişim</h3>
+            <p>
+                Gizlilikle ilgili sorularınız için:
+                <a href="mailto:info@mumifashion.com">info@mumifashion.com</a>
+            </p>
+        </div>
+
+        <footer>
+            <a href="/terms">Kullanım Koşulları</a> · <a href="/">Ana sayfa</a>
+        </footer>
+    </div>
+</body>
+</html>

@@ -131,5 +131,13 @@ def handle_callback(state, code, exchange_fn=None, redirect_uri=None):
             "IG_ACCESS_TOKEN": token,
         })
 
+    # Hesap→tenant resolver cache'i (yeni ig_account_id) + bu tenant'ın kurulum
+    # mandalı (IG creds artık bağlı olabilir) eskimesin (Faz B3).
     tenant_service.invalidate()
+    try:
+        from Services import setup_service
+        setup_service.reset_setup_cache(tenant_id)
+    except Exception:
+        pass
+
     return {"tenant_id": tenant_id, "ig_account_id": ig_account_id}

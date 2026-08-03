@@ -208,6 +208,26 @@ class OAuthState(Base):
     expires_at = Column(DateTime, nullable=False)
 
 
+class SignupRequest(Base):
+    """Landing page 'Ücretsiz Dene' talep formu kaydı (lead capture).
+
+    Kök model (tenant'a ait değil — platform seviyesi lead). Super-admin bu
+    talepleri görüp `onboarding_service.create_tenant` ile tenant'a çevirir.
+    """
+
+    __tablename__ = "signup_requests"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    store_name = Column(String(255), nullable=False)
+    contact_name = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=False)
+    phone = Column(String(64), nullable=True)
+    instagram = Column(String(255), nullable=True)
+    message = Column(Text, nullable=True)
+    status = Column(String(32), nullable=False, default="new")
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+
+
 # Varsayılan (mevcut Mumi mağazası) tenant kimliği. Backfill ve tek-tenant
 # köprüsü bu değeri kullanır. Faz 4'te gerçek webhook routing devreye girene
 # kadar scope belirtilmemiş kod yolları bu tenant altında çalışır.

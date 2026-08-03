@@ -120,24 +120,32 @@ SECTIONS = [
     {
         "id": "instagram", "required": True, "test": True,
         "fields": {
-            "IG_ACCOUNT_ID":   {"type": "digits", "required": True, "target": "env"},
-            "IG_ACCESS_TOKEN": {"type": "text", "required": True, "secret": True, "target": "env"},
+            # Tenant'a ait bağlantı bilgileri → DB (settings). Her tenant kendi
+            # Instagram hesabını bağlar; değişiklik anında geçerli olur (accessor).
+            "IG_ACCOUNT_ID":   {"type": "digits", "required": True, "target": "setting"},
+            "IG_ACCESS_TOKEN": {"type": "text", "required": True, "secret": True, "target": "setting"},
+            # Bağlantı türü: Instagram Login (graph.instagram.com) ya da bağlı
+            # Facebook Sayfası (graph.facebook.com). Boşsa varsayılana düşülür.
+            "IG_API_BASE":     {"type": "choice", "target": "setting",
+                                "choices": ["graph.facebook.com", "graph.instagram.com"]},
+            # VERIFY_TOKEN platform (sistem) değeridir — tek webhook ucu için
+            # ortaktır; .env'de kalır (tenant_settings'e yazılmaz).
             "VERIFY_TOKEN":    {"type": "token", "required": True, "target": "env"},
         },
     },
     {
         "id": "ai", "required": True, "test": True,
         "fields": {
-            "OPENAI_API_KEY": {"type": "text", "required": True, "secret": True, "target": "env"},
-            "MODEL_NAME":     {"type": "text", "target": "env"},
+            "OPENAI_API_KEY": {"type": "text", "required": True, "secret": True, "target": "setting"},
+            "MODEL_NAME":     {"type": "text", "target": "setting"},
         },
     },
     {
         "id": "ikas", "required": True, "test": True,
         "fields": {
-            "IKAS_STORE_NAME":   {"type": "slug", "required": True, "target": "env"},
-            "IKAS_CLIENT_ID":    {"type": "text", "required": True, "target": "env"},
-            "IKAS_CLIENT_SECRET": {"type": "text", "required": True, "secret": True, "target": "env"},
+            "IKAS_STORE_NAME":   {"type": "slug", "required": True, "target": "setting"},
+            "IKAS_CLIENT_ID":    {"type": "text", "required": True, "target": "setting"},
+            "IKAS_CLIENT_SECRET": {"type": "text", "required": True, "secret": True, "target": "setting"},
         },
     },
     {
@@ -152,9 +160,9 @@ SECTIONS = [
         # Opsiyoneldir: boşsa sipariş bildirimi atlanır, müşteri akışı etkilenmez.
         "id": "notify", "required": False, "test": True,
         "fields": {
-            "WHATSAPP_PHONE_NUMBER_ID": {"type": "digits", "target": "env"},
-            "WHATSAPP_ACCESS_TOKEN":    {"type": "text", "secret": True, "target": "env"},
-            "STORE_NOTIFY_PHONE":       {"type": "phone", "target": "env"},
+            "WHATSAPP_PHONE_NUMBER_ID": {"type": "digits", "target": "setting"},
+            "WHATSAPP_ACCESS_TOKEN":    {"type": "text", "secret": True, "target": "setting"},
+            "STORE_NOTIFY_PHONE":       {"type": "phone", "target": "setting"},
         },
     },
     {
@@ -171,12 +179,19 @@ SECTIONS = [
     },
 ]
 
-# Kurulumun "tamamlandı" sayılması için .env'de dolu olması gereken anahtarlar.
-# (STORE_NAME gibi kozmetik alanlar tamamlanmayı bloklamaz.)
-REQUIRED_ENV_KEYS = [
-    "IG_ACCOUNT_ID", "IG_ACCESS_TOKEN", "VERIFY_TOKEN",
+# Kurulumun "tamamlandı" sayılması için AKTİF TENANT'ın settings kayıtlarında
+# dolu olması gereken anahtarlar (her tenant kendi kurulumunu yapar). Secret'lar
+# DB'de şifreli olsa da "dolu" sayılır. (STORE_NAME gibi kozmetik alanlar bloklamaz.)
+REQUIRED_SETTING_KEYS = [
+    "IG_ACCOUNT_ID", "IG_ACCESS_TOKEN",
     "OPENAI_API_KEY",
     "IKAS_STORE_NAME", "IKAS_CLIENT_ID", "IKAS_CLIENT_SECRET",
+]
+
+# Platform (sistem) seviyesinde .env'de dolu olması gereken anahtarlar. Tek
+# webhook ucu için ortaktır; tenant'a özel değildir.
+REQUIRED_ENV_KEYS = [
+    "VERIFY_TOKEN",
 ]
 
 
@@ -220,16 +235,43 @@ def _section_status(sec, fields_out, tested_at):
     return "ok"
 
 
-# Tek yönlü mandal: kurulum bir kez tamamlanınca süreç ömrü boyunca True kalır.
-# Böylece tamamlanmış panelde her istekte DB'ye gidilmez ve geçici DB kesintisi
+# Tek yönlü mandal — ARTIK TENANT BAZLI. Bir tenant kurulumu tamamlanınca o
+# tenant için süreç ömrü boyunca True kalır (başka tenant'ı ETKİLEMEZ). Böylece
+# tamamlanmış panelde her istekte DB'ye gidilmez ve geçici DB kesintisi
 # kullanıcıyı Kurulum ekranına düşürmez (kurulum geri alınmaz).
-_setup_complete_cache = False
+_setup_complete_cache = {}  # tenant_id -> True
+
+
+def reset_setup_cache(tenant_id=None):
+    """Kurulum-tamamlandı mandalını sıfırlar (belirli tenant ya da tümü).
+
+    Kredensiyel/kurulum değişiminde ya da testlerde çağrılır.
+    """
+    if tenant_id is None:
+        _setup_complete_cache.clear()
+    else:
+        _setup_complete_cache.pop(tenant_id, None)
+
+
+def _tenant_key():
+    """Aktif tenant kimliği (cache namespace'i). Çözülemezse None."""
+    try:
+        from Services.db import get_current_tenant
+        return get_current_tenant()
+    except Exception:
+        return None
 
 
 def is_setup_complete(env_vals=None, stored=None, db_ok=None):
-    """DB erişilebilir + zorunlu .env anahtarları dolu + SETUP_COMPLETED=1."""
-    global _setup_complete_cache
-    if _setup_complete_cache:
+    """AKTİF TENANT için kurulum tamam mı: DB erişilebilir + zorunlu tenant
+    ayarları dolu + platform (.env) zorunluları dolu + SETUP_COMPLETED=1.
+
+    Zorunlu tenant credential'ları .env'de DEĞİL, aktif tenant'ın settings
+    kayıtlarında aranır (per-tenant kurulum). Bir tenant'ın tamamlanması
+    başkasını "tamam" yapmaz.
+    """
+    tid = _tenant_key()
+    if _setup_complete_cache.get(tid):
         return True
 
     if env_vals is None:
@@ -241,14 +283,22 @@ def is_setup_complete(env_vals=None, stored=None, db_ok=None):
 
     if not db_ok:
         return False
+
+    # Platform (.env) zorunluları
     for k in REQUIRED_ENV_KEYS:
         v = env_vals.get(k) or os.getenv(k)
         if v is None or str(v).strip() == "":
             return False
 
+    # Tenant (DB settings) zorunluları — secret'lar şifreli ama DOLU sayılır.
+    for k in REQUIRED_SETTING_KEYS:
+        v = stored.get(k)
+        if v is None or str(v).strip() == "":
+            return False
+
     complete = str(stored.get("SETUP_COMPLETED", "")).strip() == "1"
     if complete:
-        _setup_complete_cache = True
+        _setup_complete_cache[tid] = True
     return complete
 
 
@@ -274,7 +324,7 @@ def get_setup_state():
                 # Secret değerler asla geri gönderilmez; sadece "kayıtlı mı" bilgisi
                 "value": None if meta.get("secret") else (raw if is_set else None),
             }
-            for extra in ("min", "max", "min_len"):
+            for extra in ("min", "max", "min_len", "choices"):
                 if extra in meta:
                     field[extra] = meta[extra]
             fields_out.append(field)
@@ -306,6 +356,9 @@ def _validate(key, meta, value):
         return f"{key} zorunludur."
     if value == "":
         return None  # opsiyonel ve boş — sorun yok
+
+    if meta.get("choices") and value not in meta["choices"]:
+        return f"{key} için geçerli bir seçenek seçin."
 
     t = meta["type"]
     if t == "digits" and not re.fullmatch(r"\d{6,25}", value):
@@ -385,6 +438,14 @@ def save_section(section_id, fields):
         if str(iban).strip() and not str(name).strip():
             return {"ok": False, "error": "IBAN girildiğinde IBAN Ad Soyad da zorunludur."}
 
+    # IG hesap kimliği webhook routing'in anahtarıdır (Tenant.ig_account_id sütunu).
+    # Setup yalnız settings'e yazarsa tenant kurulumu bitse bile webhook'lar
+    # eşleşmez; bu yüzden routing sütununu da senkronla (çakışma varsa reddet).
+    if "IG_ACCOUNT_ID" in setting_writes:
+        err = _sync_ig_account_id_to_tenant(setting_writes["IG_ACCOUNT_ID"])
+        if err:
+            return {"ok": False, "error": err}
+
     if setting_writes:
         if not save_stored_settings(setting_writes):
             return {"ok": False, "error": "Ayar kaydedilemedi (DB erişilemiyor olabilir)."}
@@ -406,11 +467,83 @@ def save_section(section_id, fields):
         except Exception as e:
             return {"ok": False, "error": f".env yazılamadı: {e}"}
 
+    saved_keys = list(setting_writes.keys()) + list(env_writes.keys())
+    _invalidate_caches_for_saved(saved_keys)
+
     return {
         "ok": True,
         "restart_required": restart_required,
-        "saved": list(setting_writes.keys()) + list(env_writes.keys()),
+        "saved": saved_keys,
     }
+
+
+def _sync_ig_account_id_to_tenant(ig_account_id):
+    """Setup ile girilen IG hesap kimliğini tenant kaydına (routing anahtarı) yazar.
+
+    Webhook routing `Tenant.ig_account_id` sütununu kullanır. Başka bir tenant'a
+    bağlı bir hesap girilirse çapraz-ele geçirmeyi önlemek için hata (mesaj) döner;
+    aksi halde None döner. Cross-tenant sistem işi → scoped=False.
+    """
+    ig = str(ig_account_id or "").strip()
+    tenant = _tenant_key()
+    if not ig or tenant is None:
+        return None
+
+    from sqlalchemy import select
+    from Services.db import get_session
+    from Services.models import Tenant
+
+    try:
+        with get_session(scoped=False) as s:
+            other = s.execute(
+                select(Tenant).where(
+                    Tenant.ig_account_id == ig, Tenant.id != tenant
+                )
+            ).scalar_one_or_none()
+            if other is not None:
+                return "Bu Instagram hesap ID'si zaten başka bir mağazaya bağlı."
+            row = s.get(Tenant, tenant)
+            if row is not None:
+                row.ig_account_id = ig
+    except Exception as e:
+        print("🔴 IG hesap kimliği tenant'a yazılamadı:", e)
+        return "Instagram hesap kimliği kaydedilemedi (DB)."
+    return None
+
+
+def _invalidate_caches_for_saved(saved_keys):
+    """Kredensiyel yazımı sonrası ilgili TENANT-SCOPED cache'leri tazeler (Faz B3).
+
+    Yeni anahtar/mağaza yazıldığında eski client/token/ürün önbelleği kullanılmaya
+    devam etmesin. İlgili servisin cache'i sessizce (fail-safe) temizlenir.
+    """
+    keys = set(saved_keys or [])
+    tenant = _tenant_key()
+
+    if keys & {"OPENAI_API_KEY", "MODEL_NAME"}:
+        try:
+            from Services import openai_service
+            openai_service.invalidate_client(tenant)
+        except Exception:
+            pass
+
+    if keys & {"IKAS_STORE_NAME", "IKAS_CLIENT_ID", "IKAS_CLIENT_SECRET"}:
+        try:
+            from Services import ikas_service
+            ikas_service.invalidate(tenant)
+        except Exception:
+            pass
+
+    # IG hesap kimliği değiştiyse hesap→tenant resolver cache'i eskimesin.
+    if "IG_ACCOUNT_ID" in keys:
+        try:
+            from Services import tenant_service
+            tenant_service.invalidate()
+        except Exception:
+            pass
+
+    # Zorunlu creds değişmiş olabilir → kurulum-tamamlandı mandalı yeniden hesaplansın.
+    reset_setup_cache(tenant)
 
 
 # --------------------------------------------------------------------------
@@ -428,7 +561,10 @@ def _resolve(values, key):
             meta = s["fields"][key]
             break
     if meta and meta["target"] == "setting":
-        return str(get_all_stored_settings().get(key) or "")
+        # Tekil okuma secret'ı ÇÖZER (get_all_stored_settings şifreli döndürür);
+        # bağlantı testi ham/şifreli değeri token sanmasın diye get_stored_setting.
+        from Services.settings_service import get_stored_setting
+        return str(get_stored_setting(key) or "")
     return str(dotenv_values(ENV_PATH).get(key) or os.getenv(key) or "")
 
 
@@ -487,11 +623,11 @@ def _test_instagram(values):
     token = _resolve(values, "IG_ACCESS_TOKEN")
     if not account_id or not token:
         return {"ok": False, "error": "Instagram Hesap ID ve Access Token gerekli."}
-    # API tabanı bağlantı yoluna göre değişir (graph.facebook.com / graph.instagram.com);
-    # .env'deki IG_API_BASE canlı okunur ki gönderimle aynı ucu test edelim.
-    env = dotenv_values(ENV_PATH)
-    base = env.get("IG_API_BASE") or os.getenv("IG_API_BASE") or "graph.facebook.com"
-    ver = env.get("IG_GRAPH_VERSION") or os.getenv("IG_GRAPH_VERSION") or "v23.0"
+    # API tabanı bağlantı yoluna göre değişir (graph.facebook.com / graph.instagram.com).
+    # IG_API_BASE artık tenant ayarıdır; posted (henüz kaydedilmemiş) değeri de
+    # dikkate al ki kullanıcı bağlantı türünü değiştirip kaydetmeden test edebilsin.
+    base = _resolve(values, "IG_API_BASE") or "graph.facebook.com"
+    ver = _resolve(values, "IG_GRAPH_VERSION") or "v23.0"
     # Alan adları tabana göre değişir; geçersiz alan 400 döndürmesin.
     fields = "username" if "instagram" in base else "id,name"
     try:
@@ -628,6 +764,8 @@ def mark_complete():
     if not _db_ok():
         return {"ok": False, "error": "Veritabanına erişilemiyor."}
     missing = [k for k in REQUIRED_ENV_KEYS if not (env_vals.get(k) or os.getenv(k))]
+    missing += [k for k in REQUIRED_SETTING_KEYS
+                if not (stored.get(k) and str(stored.get(k)).strip())]
     if missing:
         return {"ok": False, "error": "Eksik zorunlu alanlar: " + ", ".join(missing)}
     ok = save_stored_settings({
@@ -636,6 +774,5 @@ def mark_complete():
     })
     if not ok:
         return {"ok": False, "error": "Durum kaydedilemedi (DB)."}
-    global _setup_complete_cache
-    _setup_complete_cache = True
+    _setup_complete_cache[_tenant_key()] = True
     return {"ok": True}

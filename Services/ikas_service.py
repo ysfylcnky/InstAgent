@@ -102,6 +102,25 @@ ikas_search_cache = {}
 ikas_product_cache = {}
 
 
+def invalidate(tenant_id=None):
+    """İKAS token/ürün cache'lerini temizler (belirli tenant ya da tümü).
+
+    İKAS credential'ları ya da mağaza adı değişince çağrılır: eski access token
+    ve önbelleklenmiş ürün verisi yeni ayarla karışmasın (tenant-scoped).
+    """
+    if tenant_id is None:
+        _token_cache.clear()
+        ikas_search_cache.clear()
+        ikas_product_cache.clear()
+        return
+
+    _token_cache.pop(tenant_id, None)
+    for cache in (ikas_search_cache, ikas_product_cache):
+        stale = [k for k in cache if isinstance(k, tuple) and k and k[0] == tenant_id]
+        for k in stale:
+            cache.pop(k, None)
+
+
 def _get_access_token():
 
     now = time.time()

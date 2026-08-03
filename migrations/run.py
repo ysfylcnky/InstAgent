@@ -156,6 +156,35 @@ _COMPOSITE_KEYS = [
 ]
 
 
+def _ensure_unique_ig_account(conn, inspector):
+    """tenants.ig_account_id için UNIQUE kısıt yoksa ekler (idempotent).
+
+    Normalde `tenants` tablosu create_all ile (model'de unique=True) kurulduğundan
+    zaten UNIQUE'tir; bu adım, kısıt eksik kalmış bir kurulumda routing anahtarının
+    çapraz-tenant çakışmasına karşı garanti sağlar. Var olan kısıt tekrar
+    eklenmeye çalışılmaz (duplicate index hatası olmaz)."""
+    def _covers(cols):
+        return cols == ["ig_account_id"]
+
+    try:
+        for idx in inspector.get_indexes("tenants"):
+            if idx.get("unique") and _covers(idx.get("column_names") or []):
+                return
+    except Exception:
+        pass
+    try:
+        for uc in inspector.get_unique_constraints("tenants"):
+            if _covers(uc.get("column_names") or []):
+                return
+    except Exception:
+        pass
+
+    print("  + tenants.ig_account_id UNIQUE index ekleniyor")
+    conn.execute(text(
+        "ALTER TABLE tenants ADD UNIQUE INDEX uq_tenants_ig_account_id (ig_account_id)"
+    ))
+
+
 def harden():
     """tenant_id NOT NULL + customers/settings bileşik anahtar (MySQL).
 
@@ -184,6 +213,8 @@ def harden():
         for ddl in _COMPOSITE_KEYS:
             print("  " + ddl)
             conn.execute(text(ddl))
+        # Routing anahtarı global tekil olmalı (çapraz-tenant çakışma yok).
+        _ensure_unique_ig_account(conn, inspect(conn))
     print("Hardening tamam.")
 
 

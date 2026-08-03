@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InstaAgent — Kullanım Koşulları</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
+    <style>
+        :root{
+            --bg:#0b1120; --card:#131c31; --border:#243049;
+            --text:#e6ecf7; --muted:#8291ad; --accent:#E1306C;
+            --ig-gradient:linear-gradient(135deg,#405DE6,#833AB4,#C13584,#E1306C,#FD1D1D,#F56040,#FCAF45);
+        }
+        *{ box-sizing:border-box; margin:0; padding:0; }
+        body{
+            font-family:-apple-system,"Segoe UI",Roboto,sans-serif;
+            background:radial-gradient(1200px 600px at 50% -10%,#16233f 0%,var(--bg) 55%);
+            color:var(--text); line-height:1.7; min-height:100vh; padding:40px 20px;
+        }
+        .wrap{ max-width:820px; margin:0 auto; }
+        .brand{ display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+        .brand-icon{
+            width:44px; height:44px; border-radius:12px; background:var(--ig-gradient);
+            color:#fff; display:flex; align-items:center; justify-content:center;
+            font-size:22px; font-weight:700;
+        }
+        .brand h1{ font-size:20px; font-weight:700; }
+        .brand span{ font-size:12px; color:var(--muted); }
+        .card{
+            background:var(--card); border:1px solid var(--border); border-radius:16px;
+            padding:34px 32px; margin-top:24px; box-shadow:0 24px 60px rgba(0,0,0,.4);
+        }
+        h2{ font-size:22px; margin-bottom:6px; }
+        .updated{ color:var(--muted); font-size:13px; margin-bottom:24px; }
+        h3{ font-size:16px; margin:26px 0 10px; color:#fff; }
+        p, li{ color:#c8d2e6; font-size:14.5px; }
+        ul{ margin:8px 0 8px 20px; }
+        li{ margin:5px 0; }
+        a{ color:var(--accent); text-decoration:none; }
+        a:hover{ text-decoration:underline; }
+        strong{ color:var(--text); }
+        footer{ margin-top:28px; text-align:center; color:var(--muted); font-size:12.5px; }
+        footer a{ color:var(--muted); }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="brand">
+            <div class="brand-icon">◎</div>
+            <div>
+                <h1>InstaAgent</h1>
+                <span>Yapay Zeka Satış Asistanı</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Kullanım Koşulları</h2>
+            <p class="updated">Son güncelleme: 3 Ağustos 2026</p>
+
+            <p>
+                Bu Kullanım Koşulları ("Koşullar"), InstaAgent hizmetini ("Hizmet")
+                kullanan işletmeler ("Mağaza") ile Hizmet sağlayıcısı arasındaki ilişkiyi
+                düzenler. Hizmet'i kullanarak bu Koşulları kabul etmiş sayılırsınız.
+            </p>
+
+            <h3>1. Hizmetin Tanımı</h3>
+            <p>
+                InstaAgent, Mağaza'nın Instagram Direct kanalına gelen mesajları yapay zeka
+                ile otomatik yanıtlayan, ürün öneren ve sipariş oluşturan bir asistan sunar.
+                Hizmet, Meta'nın Instagram Messaging API'si üzerinden çalışır.
+            </p>
+
+            <h3>2. Hesap ve Yetkilendirme</h3>
+            <ul>
+                <li>Mağaza, yalnızca sahibi olduğu veya yönetmeye yetkili olduğu Instagram
+                    Business hesabını bağlayabilir.</li>
+                <li>Mağaza, Instagram hesabına erişim izinlerini istediği zaman geri çekebilir;
+                    izin geri çekildiğinde ilgili bağlantı pasifleştirilir.</li>
+                <li>Erişim token'ı ve entegrasyon anahtarlarının gizliliğinden Mağaza sorumludur.</li>
+            </ul>
+
+            <h3>3. Kabul Edilebilir Kullanım</h3>
+            <ul>
+                <li>Hizmet, spam, taciz, yanıltıcı içerik veya yasa dışı ürün satışı için
+                    kullanılamaz.</li>
+                <li>Meta Platform Kuralları ve Instagram Topluluk Kuralları'na uyulması
+                    zorunludur.</li>
+                <li>Hizmet'i tersine mühendislik yapmak veya izinsiz erişim denemek yasaktır.</li>
+            </ul>
+
+            <h3>4. Veri ve Gizlilik</h3>
+            <p>
+                Verilerin işlenmesi <a href="/privacy">Gizlilik Politikası</a> kapsamındadır.
+                Mağaza, Müşterilerinden gerekli izinleri almaktan ve geçerli veri koruma
+                mevzuatına (KVKK/GDPR vb.) uymaktan sorumludur.
+            </p>
+
+            <h3>5. Hizmet Sürekliliği</h3>
+            <p>
+                Hizmet "olduğu gibi" sunulur. Kesintisiz veya hatasız çalışacağına dair garanti
+                verilmez; bakım, üçüncü taraf API değişiklikleri veya arızalar nedeniyle geçici
+                kesintiler olabilir.
+            </p>
+
+            <h3>6. Sorumluluğun Sınırlandırılması</h3>
+            <p>
+                Hizmet sağlayıcı; yapay zeka yanıtlarının içeriğinden, otomatik oluşturulan
+                siparişlerden veya üçüncü taraf hizmetlerin (Meta, OpenAI, İKAS) kesintilerinden
+                doğabilecek dolaylı zararlardan yürürlükteki mevzuatın izin verdiği ölçüde
+                sorumlu tutulamaz.
+            </p>
+
+            <h3>7. Fesih</h3>
+            <p>
+                Mağaza, hesabını dilediği zaman kapatabilir. Koşulların ihlali durumunda
+                Hizmet sağlayıcı erişimi askıya alabilir. Fesih sonrası veri, Gizlilik
+                Politikası'ndaki saklama/silme kuralları uyarınca işlenir.
+            </p>
+
+            <h3>8. Değişiklikler</h3>
+            <p>
+                Bu Koşullar güncellenebilir. Güncel sürüm bu sayfada yayımlanır.
+            </p>
+
+            <h3>9. İletişim</h3>
+            <p>
+                Sorularınız için:
+                <a href="mailto:info@mumifashion.com">info@mumifashion.com</a>
+            </p>
+        </div>
+
+        <footer>
+            <a href="/privacy">Gizlilik Politikası</a> · <a href="/">Ana sayfa</a>
+        </footer>
+    </div>
+</body>
+</html>

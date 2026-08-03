@@ -10,8 +10,9 @@
 from sqlalchemy import select
 
 from Services.db import get_session, tenant_scope
-from Services.models import Setting
+from Services.models import Setting, Tenant
 from Services import settings_service as ss
+from Services import setup_service
 from conftest import TENANT_A, TENANT_B
 
 
@@ -79,3 +80,45 @@ def test_upsert_updates_not_duplicates(env):
             )
         ).all()
     assert len(cnt) == 1
+
+
+# ----------------------------------------------------------------------
+# Faz B1 — Kurulum sihirbazı tenant credential'larını .env yerine DB'ye yazar.
+# ----------------------------------------------------------------------
+
+def test_setup_writes_creds_to_tenant_settings(env):
+    with tenant_scope(TENANT_A):
+        res = setup_service.save_section("instagram", {
+            "IG_ACCOUNT_ID": "17841400000000000",
+            "IG_ACCESS_TOKEN": "IG_SECRET_TOKEN",
+            "IG_API_BASE": "graph.instagram.com",
+        })
+
+    assert res["ok"] is True
+    # Ayar (settings) hedefli → anında geçerli, restart gerekmez
+    assert res.get("restart_required") is False
+
+    # Düz metin ayarlar doğru tenant'ta
+    assert _raw_svalue(TENANT_A, "IG_ACCOUNT_ID") == "17841400000000000"
+    assert _raw_svalue(TENANT_A, "IG_API_BASE") == "graph.instagram.com"
+
+    # Access token DB'de ŞİFRELİ (düz metin sızmaz)
+    raw_tok = _raw_svalue(TENANT_A, "IG_ACCESS_TOKEN")
+    assert raw_tok is not None and raw_tok.startswith("enc:v1:")
+    with tenant_scope(TENANT_A):
+        assert ss.get_stored_setting("IG_ACCESS_TOKEN") == "IG_SECRET_TOKEN"
+
+    # Başka tenant hiçbir şey almadı
+    assert _raw_svalue(TENANT_B, "IG_ACCOUNT_ID") is None
+
+    # Routing anahtarı (Tenant.ig_account_id sütunu) da senkronlandı
+    with get_session(scoped=False) as s:
+        assert s.get(Tenant, TENANT_A).ig_account_id == "17841400000000000"
+
+
+def test_setup_rejects_ig_account_bound_to_other_tenant(env):
+    # B'nin IG hesabını A'ya bağlamaya çalışmak reddedilmeli (çapraz ele geçirme yok).
+    from conftest import IG_ACCOUNT_B
+    with tenant_scope(TENANT_A):
+        res = setup_service.save_section("instagram", {"IG_ACCOUNT_ID": IG_ACCOUNT_B})
+    assert res["ok"] is False

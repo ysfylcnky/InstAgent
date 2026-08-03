@@ -70,12 +70,14 @@
 .field{ margin-bottom:16px; }
 .field label{ display:block; font-size:12.5px; color:var(--text); font-weight:600; margin-bottom:7px; }
 .field label .saved{ font-size:10px; font-weight:700; color:var(--green); margin-left:6px; }
-.field input{
+.field input,.field select{
     width:100%; background:var(--surface-2); border:1px solid var(--border); color:var(--text);
     border-radius:10px; padding:11px 13px; font-size:14px; font-family:inherit;
 }
-.field input:focus{ outline:none; border-color:var(--green); }
-.field input:disabled{ opacity:.55; cursor:not-allowed; }
+.field select{ appearance:none; cursor:pointer; }
+.field select option{ background:var(--bg-2); color:var(--text); }
+.field input:focus,.field select:focus{ outline:none; border-color:var(--green); }
+.field input:disabled,.field select:disabled{ opacity:.55; cursor:not-allowed; }
 .field .hint{ font-size:11.5px; color:var(--muted); margin-top:6px; }
 
 .acc-actions{ display:flex; align-items:center; gap:12px; margin-top:6px; flex-wrap:wrap; }
@@ -158,6 +160,6 @@
     </main>
 </div>
 
-<script src="/static/js/setup.js?v=3"></script>
+<script src="/static/js/setup.js?v=4"></script>
 </body>
 </html>

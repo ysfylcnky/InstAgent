@@ -19,7 +19,8 @@ const FIELD_META = {
     STORE_IBAN:               { label: "IBAN", help: "Havale/EFT talimatında müşteriye iletilir. Boşsa IBAN mesajı gönderilmez.", ph: "TR.. (24 hane)" },
     STORE_IBAN_NAME:          { label: "IBAN Ad Soyad", help: "Hesap sahibinin adı soyadı." },
     IG_ACCOUNT_ID:            { label: "Instagram Hesap ID", help: "Instagram profesyonel hesabın (ya da bağlı Facebook sayfasının) kimliği.", ph: "17841400000000000" },
-    IG_ACCESS_TOKEN:          { label: "Access Token", help: "Kalıcı (System User) token önerilir; mesajlaşma izinli olmalı." },
+    IG_ACCESS_TOKEN:          { label: "Access Token", help: "Instagram Login ile bağlanıyorsan token, uygulama panosundaki \"Generate token\" düğmesinden alınır (~60 gün geçerli, süresi dolunca yenilenir). Bağlı Facebook Sayfası üzerinden bağlanıyorsan kalıcı Sayfa/System User token'ı önerilir. Her durumda mesajlaşma izni olmalı." },
+    IG_API_BASE:              { label: "Bağlantı Türü", help: "Instagram Login ile bağlanıyorsan graph.instagram.com; bağlı bir Facebook Sayfası üzerinden bağlanıyorsan graph.facebook.com seçin. Emin değilsen birini seçip Test Et — başarısızsa diğerini deneyin." },
     WHATSAPP_PHONE_NUMBER_ID: { label: "WhatsApp Phone Number ID", help: "Mağaza bildirimini WhatsApp'tan göndermek için (opsiyonel).", ph: "123456789012345" },
     WHATSAPP_ACCESS_TOKEN:    { label: "WhatsApp Access Token", help: "Mağaza bildirimi için WhatsApp token'ı (opsiyonel)." },
     VERIFY_TOKEN:             { label: "Verify Token", help: "Webhook doğrulaması için serbest belirlediğiniz gizli dize. Meta webhook ayarına birebir aynısı girilir." },
@@ -83,12 +84,34 @@ const Setup = {
             : "";
         let hint = meta.help || "";
         if (f.target === "env" && !readonly) hint += (hint ? " · " : "") + "Kayıt sonrası yeniden başlatma gerekir.";
+
+        const labelHtml =
+            `<label>${this.esc(meta.label)}${f.required ? ' <span style="color:var(--amber)">*</span>' : ''}${saved}</label>`;
+        const hintHtml = hint ? `<div class="hint">${this.esc(hint)}</div>` : "";
+
+        // Seçenekli alan (ör. Bağlantı Türü) → açılır liste (<select>)
+        if (Array.isArray(f.choices) && f.choices.length){
+            const cur = f.value == null ? "" : String(f.value);
+            const opts = f.choices.map(c =>
+                `<option value="${this.esc(c)}"${cur === String(c) ? " selected" : ""}>${this.esc(c)}</option>`
+            ).join("");
+            const emptyOpt = `<option value=""${cur === "" ? " selected" : ""}>— varsayılan —</option>`;
+            return `
+                <div class="field">
+                    ${labelHtml}
+                    <select data-key="${this.esc(f.key)}" data-section-field ${readonly ? "disabled" : ""}>
+                        ${emptyOpt}${opts}
+                    </select>
+                    ${hintHtml}
+                </div>`;
+        }
+
         return `
             <div class="field">
-                <label>${this.esc(meta.label)}${f.required ? ' <span style="color:var(--amber)">*</span>' : ''}${saved}</label>
+                ${labelHtml}
                 <input data-key="${this.esc(f.key)}" data-section-field type="${type}"${numAttr}
                        ${readonly ? "disabled" : ""} value="${this.esc(val)}" placeholder="${this.esc(ph)}">
-                ${hint ? `<div class="hint">${this.esc(hint)}</div>` : ""}
+                ${hintHtml}
             </div>`;
     },
 
@@ -175,7 +198,8 @@ const Setup = {
 
     collect(id){
         const out = {};
-        document.querySelectorAll(`[data-acc="${id}"] input[data-section-field]`).forEach(inp => {
+        // input + select (Bağlantı Türü gibi açılır listeler) birlikte toplanır
+        document.querySelectorAll(`[data-acc="${id}"] [data-section-field]`).forEach(inp => {
             if (inp.disabled) return;               // readonly (MySQL) gönderilmez
             out[inp.getAttribute("data-key")] = inp.value;
         });
