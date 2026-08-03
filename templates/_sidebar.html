@@ -43,6 +43,14 @@
             <a class="nav-item {{ 'active' if active_page == 'setup' else '' }}" href="/dashboard/settings/setup">
                 <i class="fa-solid fa-wand-magic-sparkles"></i><span>Kurulum</span>
             </a>
+
+            {# Yalnız platform operatörü (senin panelin) — normal müşteri tenant'ları görmez. #}
+            {% if is_operator %}
+            <span class="nav-label">Platform</span>
+            <a class="nav-item {{ 'active' if active_page == 'leads' else '' }}" href="/dashboard/leads">
+                <i class="fa-solid fa-inbox"></i><span>Talepler</span>
+            </a>
+            {% endif %}
         </nav>
     </div>
 

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InstaAgent · Talepler</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="/static/css/dashboard.css?v=24">
+
+<style>
+/* Talepler sayfası (dashboard.css değişkenlerini kullanır) */
+.leads-panel{
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius-sm); overflow:hidden;
+}
+.leads-head{
+    padding:16px 18px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+}
+.leads-head .l-title{ font-weight:700; font-size:15px; display:flex; align-items:center; gap:10px; }
+.leads-head .count{
+    font-size:11.5px; font-weight:700; color:var(--violet);
+    background:rgba(193,53,132,.14); border:1px solid rgba(193,53,132,.28);
+    border-radius:20px; padding:2px 10px;
+}
+.leads-head .btn-refresh{
+    background:var(--surface-2); border:1px solid var(--border); color:var(--text);
+    border-radius:10px; padding:8px 14px; cursor:pointer; font-size:13px; font-weight:600;
+    display:inline-flex; align-items:center; gap:8px; transition:var(--t); font-family:inherit;
+}
+.leads-head .btn-refresh:hover{ border-color:var(--border-strong); }
+
+.leads-scroll{ overflow-x:auto; }
+table.leads{ width:100%; border-collapse:collapse; min-width:820px; }
+table.leads th, table.leads td{
+    text-align:left; padding:12px 16px; border-bottom:1px solid var(--border);
+    font-size:13.5px; vertical-align:top;
+}
+table.leads th{
+    color:var(--muted); font-weight:600; font-size:11.5px; text-transform:uppercase;
+    letter-spacing:.06em; white-space:nowrap; position:sticky; top:0; background:var(--surface);
+}
+table.leads tr:hover td{ background:var(--surface-2); }
+.l-store{ font-weight:600; color:var(--text); }
+.l-sub{ color:var(--muted); font-size:12px; margin-top:2px; }
+.l-mail a, .l-ig{ color:var(--text); }
+.l-mail a:hover{ text-decoration:underline; }
+.l-msg{ color:var(--muted); max-width:280px; }
+.l-date{ color:var(--muted); white-space:nowrap; font-size:12.5px; }
+.l-pill{
+    font-size:10.5px; font-weight:700; padding:2px 9px; border-radius:20px; white-space:nowrap;
+    background:rgba(139,124,255,.15); color:var(--violet); text-transform:capitalize;
+}
+.l-pill.done{ background:rgba(37,211,102,.15); color:var(--green); }
+.leads-empty, .leads-error{
+    padding:44px 20px; text-align:center; color:var(--muted); font-size:14px;
+}
+.leads-error{ color:var(--red); }
+</style>
+</head>
+
+<body>
+
+<div class="aurora aurora-1"></div>
+<div class="aurora aurora-2"></div>
+<div class="aurora aurora-3"></div>
+
+<div class="dashboard-layout">
+
+    {% set active_page = "leads" %}
+    {% include "_sidebar.html" %}
+
+    <main class="main-content">
+
+        <header class="topbar">
+            <div>
+                <h1>Talepler 📨</h1>
+                <p>Ana sayfadaki "Ücretsiz Dene" formunu dolduran mağazalar (yalnız senin panelinde)</p>
+            </div>
+        </header>
+
+        <div class="leads-panel">
+            <div class="leads-head">
+                <span class="l-title">
+                    <i class="fa-solid fa-inbox" style="color:var(--violet)"></i>
+                    Gelen Talepler <span class="count" id="leadCount">—</span>
+                </span>
+                <button class="btn-refresh" id="btnRefresh"><i class="fa-solid fa-rotate"></i> Yenile</button>
+            </div>
+            <div class="leads-scroll">
+                <table class="leads">
+                    <thead>
+                        <tr>
+                            <th>Tarih</th>
+                            <th>Mağaza</th>
+                            <th>Yetkili</th>
+                            <th>İletişim</th>
+                            <th>Instagram</th>
+                            <th>Mesaj</th>
+                            <th>Durum</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leadRows"></tbody>
+                </table>
+            </div>
+            <div class="leads-empty" id="leadState">Yükleniyor…</div>
+        </div>
+
+    </main>
+</div>
+
+<script>
+(function(){
+    var rows  = document.getElementById('leadRows');
+    var state = document.getElementById('leadState');
+    var count = document.getElementById('leadCount');
+    var btn   = document.getElementById('btnRefresh');
+
+    function esc(s){
+        return String(s == null ? '' : s)
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function statusPill(s){
+        var v = (s || 'new').toLowerCase();
+        var label = v === 'new' ? 'Yeni' : s;
+        var cls = (v === 'new') ? '' : 'done';
+        return '<span class="l-pill ' + cls + '">' + esc(label) + '</span>';
+    }
+
+    function contactCell(item){
+        var parts = [];
+        if (item.email) parts.push('<div class="l-mail"><a href="mailto:' + esc(item.email) + '">' + esc(item.email) + '</a></div>');
+        if (item.phone) parts.push('<div class="l-sub">' + esc(item.phone) + '</div>');
+        return parts.join('') || '<span class="l-sub">—</span>';
+    }
+
+    function igCell(v){
+        if (!v) return '<span class="l-sub">—</span>';
+        var handle = String(v).replace(/^@/, '');
+        return '<a class="l-ig" href="https://instagram.com/' + esc(handle) + '" target="_blank" rel="noopener">@' + esc(handle) + '</a>';
+    }
+
+    function render(items){
+        rows.innerHTML = '';
+        count.textContent = items.length;
+        if (!items.length){
+            state.style.display = 'block';
+            state.className = 'leads-empty';
+            state.textContent = 'Henüz talep yok. Ana sayfadaki form dolduruldukça burada görünecek.';
+            return;
+        }
+        state.style.display = 'none';
+        items.forEach(function(it){
+            var tr = document.createElement('tr');
+            tr.innerHTML =
+                '<td class="l-date">' + esc(it.created_at || '—') + '</td>' +
+                '<td><div class="l-store">' + esc(it.store_name || '—') + '</div></td>' +
+                '<td>' + esc(it.contact_name || '—') + '</td>' +
+                '<td>' + contactCell(it) + '</td>' +
+                '<td>' + igCell(it.instagram) + '</td>' +
+                '<td class="l-msg">' + esc(it.message || '') + '</td>' +
+                '<td>' + statusPill(it.status) + '</td>';
+            rows.appendChild(tr);
+        });
+    }
+
+    function load(){
+        state.style.display = 'block';
+        state.className = 'leads-empty';
+        state.textContent = 'Yükleniyor…';
+        fetch('/admin/platform/signups')
+            .then(function(r){
+                if (r.status === 403){ throw new Error('yetki'); }
+                if (!r.ok){ throw new Error('http'); }
+                return r.json();
+            })
+            .then(function(data){ render(data.items || []); })
+            .catch(function(e){
+                state.style.display = 'block';
+                state.className = 'leads-error';
+                state.textContent = (e.message === 'yetki')
+                    ? 'Bu sayfaya erişim yetkiniz yok.'
+                    : 'Talepler yüklenemedi. Lütfen tekrar deneyin.';
+                count.textContent = '—';
+            });
+    }
+
+    btn.addEventListener('click', load);
+    load();
+})();
+</script>
+</body>
+</html>

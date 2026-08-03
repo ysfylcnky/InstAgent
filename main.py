@@ -90,6 +90,7 @@ from Services.tenant_service import (
 )
 from Services.meta_verify import verify_webhook_signature, parse_signed_request
 from Services import gdpr_service
+from Services.models import DEFAULT_TENANT_ID
 from Services import onboarding_service
 from Services import meta_oauth_service
 from Services.dashboard_service import (
@@ -938,14 +939,16 @@ def admin_dashboard(user: str = Depends(require_dashboard_auth)):
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request, user: str = Depends(require_dashboard_auth)):
-    return templates.TemplateResponse(request=request, name="dashboard.html", context={})
+    return templates.TemplateResponse(request=request, name="dashboard.html",
+                                      context={"is_operator": _is_platform_operator(user)})
 
 
 # ============ Conversations sayfası ============
 
 @app.get("/dashboard/conversations", response_class=HTMLResponse)
 async def conversations_page(request: Request, user: str = Depends(require_dashboard_auth)):
-    return templates.TemplateResponse(request=request, name="conversations.html", context={})
+    return templates.TemplateResponse(request=request, name="conversations.html",
+                                      context={"is_operator": _is_platform_operator(user)})
 
 
 @app.get("/admin/conversations")
@@ -962,7 +965,8 @@ def admin_conversation_detail(sender: str, page: int = 1, user: str = Depends(re
 
 @app.get("/dashboard/customers", response_class=HTMLResponse)
 async def customers_page(request: Request, user: str = Depends(require_dashboard_auth)):
-    return templates.TemplateResponse(request=request, name="customers.html", context={})
+    return templates.TemplateResponse(request=request, name="customers.html",
+                                      context={"is_operator": _is_platform_operator(user)})
 
 
 @app.get("/admin/customers")
@@ -979,7 +983,8 @@ def admin_customer_detail(phone: str, page: int = 1, user: str = Depends(require
 
 @app.get("/dashboard/ai-usage", response_class=HTMLResponse)
 async def ai_usage_page(request: Request, user: str = Depends(require_dashboard_auth)):
-    return templates.TemplateResponse(request=request, name="ai_usage.html", context={})
+    return templates.TemplateResponse(request=request, name="ai_usage.html",
+                                      context={"is_operator": _is_platform_operator(user)})
 
 
 @app.get("/admin/ai-usage")
@@ -1006,7 +1011,8 @@ def _csv_response(filename, header, rows):
 
 @app.get("/dashboard/reports", response_class=HTMLResponse)
 async def reports_page(request: Request, user: str = Depends(require_dashboard_auth)):
-    return templates.TemplateResponse(request=request, name="reports.html", context={})
+    return templates.TemplateResponse(request=request, name="reports.html",
+                                      context={"is_operator": _is_platform_operator(user)})
 
 
 @app.get("/admin/reports")
@@ -1095,7 +1101,8 @@ def _effective_settings():
 
 @app.get("/dashboard/settings", response_class=HTMLResponse)
 async def settings_page(request: Request, user: str = Depends(require_dashboard_auth)):
-    return templates.TemplateResponse(request=request, name="settings.html", context={})
+    return templates.TemplateResponse(request=request, name="settings.html",
+                                      context={"is_operator": _is_platform_operator(user)})
 
 
 @app.get("/admin/settings")
@@ -1162,7 +1169,8 @@ async def admin_settings_save(request: Request, user: str = Depends(require_dash
 
 @app.get("/dashboard/settings/setup", response_class=HTMLResponse)
 async def setup_page(request: Request, user: str = Depends(require_dashboard_auth)):
-    return templates.TemplateResponse(request=request, name="setup.html", context={})
+    return templates.TemplateResponse(request=request, name="setup.html",
+                                      context={"is_operator": _is_platform_operator(user)})
 
 
 @app.get("/admin/settings/setup")
@@ -1229,6 +1237,26 @@ def require_superadmin(ctx: dict = Depends(require_dashboard_auth)):
     return ctx
 
 
+def _is_platform_operator(ctx):
+    """Platform operatörü mü: superadmin YA DA köken (default) tenant sahibi.
+
+    Landing 'Talepler' (lead) verisi platform seviyesidir; yalnız operatör görür.
+    Tek-tenant köprüsünde operatör, köken tenant (DEFAULT_TENANT_ID) sahibidir;
+    çok-tenant'ta ayrıca superadmin. Normal müşteri tenant'ları (id != default ve
+    superadmin değil) bu sekmeyi GÖRMEZ / erişemez.
+    """
+    if not ctx:
+        return False
+    return ctx.get("role") == "superadmin" or ctx.get("tenant_id") == DEFAULT_TENANT_ID
+
+
+def require_platform_operator(ctx: dict = Depends(require_dashboard_auth)):
+    """Platform operatörü (superadmin ya da köken tenant sahibi) gerektirir."""
+    if not _is_platform_operator(ctx):
+        raise HTTPException(status_code=403, detail="Yalnız platform operatörü.")
+    return ctx
+
+
 @app.post("/admin/platform/tenants")
 async def admin_create_tenant(request: Request, ctx: dict = Depends(require_superadmin)):
     """Yeni tenant + owner user oluşturur (atomik). Super-admin gerektirir."""
@@ -1251,8 +1279,8 @@ async def admin_create_tenant(request: Request, ctx: dict = Depends(require_supe
 
 
 @app.get("/admin/platform/signups")
-def admin_list_signups(ctx: dict = Depends(require_superadmin)):
-    """Landing talep formundan gelen lead'leri listeler (super-admin)."""
+def admin_list_signups(ctx: dict = Depends(require_platform_operator)):
+    """Landing talep formundan gelen lead'leri listeler (platform operatörü)."""
     from Services.db import get_session
     from Services.models import SignupRequest
 
@@ -1270,6 +1298,19 @@ def admin_list_signups(ctx: dict = Depends(require_superadmin)):
             "created_at": r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else None,
         } for r in rows]
     return {"items": items}
+
+
+@app.get("/dashboard/leads", response_class=HTMLResponse)
+async def leads_page(request: Request, user: dict = Depends(require_dashboard_auth)):
+    """Landing talep formu lead'leri — YALNIZ platform operatörünün panelinde.
+
+    Operatör değilse (normal müşteri tenant'ı) sessizce dashboard'a döner; sekme
+    zaten menüde de gösterilmez."""
+    if not _is_platform_operator(user):
+        return RedirectResponse(url="/dashboard", status_code=307)
+    return templates.TemplateResponse(
+        request=request, name="leads.html", context={"is_operator": True}
+    )
 
 
 @app.get("/admin/connect/instagram")
