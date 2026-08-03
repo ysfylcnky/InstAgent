@@ -1471,6 +1471,22 @@ async def instagram_webhook(request: Request):
     app_secret = config.META_APP_SECRET
     if app_secret:
         signature = request.headers.get("X-Hub-Signature-256")
+
+        # === GECICI TESHIS — imza sorunu cozulunce BU BLOGU SIL ===
+        # Secret sizdirmaz: imzalarin yalniz ilk 16 karakteri yazilir.
+        import hmac as _dbg_hmac, hashlib as _dbg_hashlib
+        _dbg_expected = "sha256=" + _dbg_hmac.new(
+            app_secret.encode("utf-8"), raw_body, _dbg_hashlib.sha256
+        ).hexdigest()
+        print(
+            f"[TESHIS] header?={signature is not None} "
+            f"body_len={len(raw_body)} "
+            f"content_length={request.headers.get('content-length')} "
+            f"beklenen={_dbg_expected[:16]} "
+            f"gelen={(signature or '')[:16]}"
+        )
+        # === /GECICI TESHIS ===
+
         if not verify_webhook_signature(raw_body, signature, app_secret):
             print("⛔ Webhook imzası geçersiz/eksik — istek reddedildi (403).")
             return PlainTextResponse(content="invalid signature", status_code=403)
