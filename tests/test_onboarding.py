@@ -10,10 +10,11 @@ from Services import setup_service
 from conftest import _bcrypt, TENANT_A, TENANT_B  # noqa (env hazır)
 
 
+# Kurulum tamamlanması için gereken MÜŞTERİ ayarları (sistem anahtarları — OpenAI,
+# VERIFY_TOKEN — burada YOK; onlar .env sorumluluğudur, gate'lemez).
 _REQUIRED = {
     "IG_ACCOUNT_ID": "17800000000000123",
     "IG_ACCESS_TOKEN": "tok",
-    "OPENAI_API_KEY": "sk-abc",
     "IKAS_STORE_NAME": "store",
     "IKAS_CLIENT_ID": "cid",
     "IKAS_CLIENT_SECRET": "csecret",
@@ -106,9 +107,7 @@ def test_validation_errors(env):
 # Faz B2 — Kurulum tamamlanması AKTİF TENANT'a göredir (per-tenant gating).
 # ----------------------------------------------------------------------
 
-def test_setup_completion_is_per_tenant(env, monkeypatch):
-    # Platform (.env) zorunlusu hazır olsun; tenant DB kontrolü test edilecek.
-    monkeypatch.setenv("VERIFY_TOKEN", "vt-test")
+def test_setup_completion_is_per_tenant(env):
     setup_service.reset_setup_cache()
 
     complete = dict(_REQUIRED)
@@ -123,8 +122,7 @@ def test_setup_completion_is_per_tenant(env, monkeypatch):
         assert setup_service.is_setup_complete(db_ok=True) is False
 
 
-def test_incomplete_when_required_setting_missing(env, monkeypatch):
-    monkeypatch.setenv("VERIFY_TOKEN", "vt-test")
+def test_incomplete_when_required_setting_missing(env):
     setup_service.reset_setup_cache()
 
     partial = dict(_REQUIRED)
@@ -137,8 +135,7 @@ def test_incomplete_when_required_setting_missing(env, monkeypatch):
         assert setup_service.is_setup_complete(db_ok=True) is False
 
 
-def test_incomplete_when_flag_not_set(env, monkeypatch):
-    monkeypatch.setenv("VERIFY_TOKEN", "vt-test")
+def test_incomplete_when_flag_not_set(env):
     setup_service.reset_setup_cache()
 
     # Tüm zorunlular dolu ama SETUP_COMPLETED yok → henüz tamam değil.

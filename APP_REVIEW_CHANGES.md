@@ -59,12 +59,18 @@ Test durumu: **75 test geçiyor** (önceki 55 + 20 yeni). Çalıştırma:
 
 ## BÖLÜM B — SaaS roadmap tamamlama
 
-### B1 · Kurulum sihirbazı tenant_settings'e yazar
-- Tenant'a ait credential'lar artık `.env` yerine **tenant settings (DB)**'e
-  yazılır: `IG_ACCOUNT_ID`, `IG_ACCESS_TOKEN`, `IG_API_BASE`, `OPENAI_API_KEY`,
-  `MODEL_NAME`, `IKAS_*`, `WHATSAPP_*`, `STORE_NOTIFY_PHONE`. Secret'lar Fernet
-  ile şifreli. Sistem sırları (`VERIFY_TOKEN`, `META_APP_*`, `JWT_SECRET`,
-  `ENCRYPTION_KEY`, MySQL/Redis) `.env`'de kalır.
+### B1 · Kurulum sihirbazı tenant_settings'e yazar (SİSTEM/MÜŞTERİ ayrımı)
+- **MÜŞTERİ (tenant) credential'ları** artık `.env` yerine **tenant settings
+  (DB)**'e yazılır ve kurulum ekranından girilir: `IG_ACCOUNT_ID`,
+  `IG_ACCESS_TOKEN`, `IG_API_BASE`, `IKAS_*`, `WHATSAPP_*`, `STORE_*`. Secret'lar
+  Fernet ile şifreli.
+- **SİSTEM (platform) anahtarları** kurulum ekranında SORULMAZ; operatörün
+  `.env`'inden okunur: `OPENAI_API_KEY`, `MODEL_NAME` (OpenAI maliyeti merkezî),
+  `VERIFY_TOKEN`, `META_APP_*`, `JWT_SECRET`, `ENCRYPTION_KEY`, MySQL/Redis.
+  Kurulum sihirbazında ayrı bir "Yapay Zeka" bölümü YOKTUR; `config.openai_api_key()`
+  ve `config.model_name()` doğrudan `.env`'den okur.
+- Kurulum tamamlanması yalnız MÜŞTERİ ayarlarına bakar (sistem anahtarları
+  müşteri kurulumunu gate'lemez).
 - **IG_API_BASE** artık yazılabilir alan: setup ekranında "Bağlantı Türü"
   açılır listesi (Instagram Login = `graph.instagram.com` / Facebook Sayfası =
   `graph.facebook.com`). Access Token ipucu güncellendi (Instagram Login'de

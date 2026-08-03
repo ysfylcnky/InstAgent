@@ -120,7 +120,7 @@ SECTIONS = [
     {
         "id": "instagram", "required": True, "test": True,
         "fields": {
-            # Tenant'a ait bağlantı bilgileri → DB (settings). Her tenant kendi
+            # MÜŞTERİYE ait bağlantı bilgileri → DB (settings). Her mağaza kendi
             # Instagram hesabını bağlar; değişiklik anında geçerli olur (accessor).
             "IG_ACCOUNT_ID":   {"type": "digits", "required": True, "target": "setting"},
             "IG_ACCESS_TOKEN": {"type": "text", "required": True, "secret": True, "target": "setting"},
@@ -128,18 +128,11 @@ SECTIONS = [
             # Facebook Sayfası (graph.facebook.com). Boşsa varsayılana düşülür.
             "IG_API_BASE":     {"type": "choice", "target": "setting",
                                 "choices": ["graph.facebook.com", "graph.instagram.com"]},
-            # VERIFY_TOKEN platform (sistem) değeridir — tek webhook ucu için
-            # ortaktır; .env'de kalır (tenant_settings'e yazılmaz).
-            "VERIFY_TOKEN":    {"type": "token", "required": True, "target": "env"},
         },
     },
-    {
-        "id": "ai", "required": True, "test": True,
-        "fields": {
-            "OPENAI_API_KEY": {"type": "text", "required": True, "secret": True, "target": "setting"},
-            "MODEL_NAME":     {"type": "text", "target": "setting"},
-        },
-    },
+    # NOT: OpenAI (OPENAI_API_KEY, MODEL_NAME) ve VERIFY_TOKEN SİSTEM (platform)
+    # değerleridir; müşteriye sorulmaz, .env'den okunur (META_APP_* gibi). Bu yüzden
+    # kurulum sihirbazında AYRI bir "ai" bölümü yoktur.
     {
         "id": "ikas", "required": True, "test": True,
         "fields": {
@@ -180,19 +173,19 @@ SECTIONS = [
 ]
 
 # Kurulumun "tamamlandı" sayılması için AKTİF TENANT'ın settings kayıtlarında
-# dolu olması gereken anahtarlar (her tenant kendi kurulumunu yapar). Secret'lar
-# DB'de şifreli olsa da "dolu" sayılır. (STORE_NAME gibi kozmetik alanlar bloklamaz.)
+# dolu olması gereken MÜŞTERİ anahtarları (her mağaza kendi kurulumunu yapar).
+# Secret'lar DB'de şifreli olsa da "dolu" sayılır. (STORE_NAME gibi kozmetik
+# alanlar bloklamaz.) OpenAI/VERIFY_TOKEN gibi SİSTEM anahtarları burada YOKTUR —
+# onlar operatörün .env sorumluluğudur, müşteri kurulumunu bloklamaz.
 REQUIRED_SETTING_KEYS = [
     "IG_ACCOUNT_ID", "IG_ACCESS_TOKEN",
-    "OPENAI_API_KEY",
     "IKAS_STORE_NAME", "IKAS_CLIENT_ID", "IKAS_CLIENT_SECRET",
 ]
 
-# Platform (sistem) seviyesinde .env'de dolu olması gereken anahtarlar. Tek
-# webhook ucu için ortaktır; tenant'a özel değildir.
-REQUIRED_ENV_KEYS = [
-    "VERIFY_TOKEN",
-]
+# Kurulum tamamlanması yalnız müşteri (tenant) ayarlarına bakar. Sistem sırları
+# (OPENAI_API_KEY, VERIFY_TOKEN, META_APP_*, ENCRYPTION_KEY, MySQL/Redis) operatör
+# tarafından .env'de bir kez yapılandırılır; müşteri kurulumunu GATE'lemez.
+REQUIRED_ENV_KEYS = []
 
 
 def _section(section_id):
@@ -520,13 +513,8 @@ def _invalidate_caches_for_saved(saved_keys):
     keys = set(saved_keys or [])
     tenant = _tenant_key()
 
-    if keys & {"OPENAI_API_KEY", "MODEL_NAME"}:
-        try:
-            from Services import openai_service
-            openai_service.invalidate_client(tenant)
-        except Exception:
-            pass
-
+    # OpenAI SİSTEM anahtarıdır (.env), setup'tan yazılmaz — client cache'i .env
+    # değişiminde uygulama restart'ıyla tazelenir; burada invalidate gerekmez.
     if keys & {"IKAS_STORE_NAME", "IKAS_CLIENT_ID", "IKAS_CLIENT_SECRET"}:
         try:
             from Services import ikas_service
@@ -739,9 +727,10 @@ def _test_notification(values):
     return {"ok": False, "error": "Gönderilemedi: " + _http_error_message(r, [token])}
 
 
+# OpenAI SİSTEM anahtarıdır (.env); kurulumda ayrı bölüm/test yoktur. _test_openai
+# fonksiyonu ileride operatör aracı olarak kullanılabilsin diye korunur.
 _TESTS = {
     "instagram": _test_instagram,
-    "ai": _test_openai,
     "ikas": _test_ikas,
     "product": _test_product_search,
     "notify": _test_notification,

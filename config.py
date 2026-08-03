@@ -195,11 +195,15 @@ def ig_graph_version():
 
 
 def openai_api_key():
-    return get_setting("OPENAI_API_KEY", OPENAI_API_KEY)
+    # SİSTEM anahtarı — platform (operatör) .env'inden okunur; tenant'a özel
+    # DEĞİLDİR. OpenAI maliyeti merkezî olarak platform tarafından karşılanır,
+    # bu yüzden müşteri kurulum ekranında sorulmaz.
+    return OPENAI_API_KEY
 
 
 def model_name():
-    return get_setting("MODEL_NAME", MODEL_NAME)
+    # SİSTEM ayarı — .env'den okunur (tüm tenant'lar için ortak).
+    return MODEL_NAME
 
 
 def ikas_store_name():

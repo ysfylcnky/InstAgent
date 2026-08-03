@@ -10,20 +10,13 @@ import time
 
 from Services.db import tenant_scope, get_session
 from Services.models import Tenant
-from Services import setup_service, openai_service, ikas_service, tenant_service
+from Services import setup_service, ikas_service, tenant_service
 from conftest import TENANT_A, TENANT_B, IG_ACCOUNT_A
 
 
-def test_openai_client_cache_invalidated_on_key_change(env):
-    openai_service._clients[TENANT_A] = object()      # sahte önbellek client'ı
-    openai_service._clients[TENANT_B] = object()
-
-    with tenant_scope(TENANT_A):
-        res = setup_service.save_section("ai", {"OPENAI_API_KEY": "sk-new"})
-
-    assert res["ok"] is True
-    assert TENANT_A not in openai_service._clients      # A tazelendi
-    assert TENANT_B in openai_service._clients          # B korundu
+# NOT: OpenAI artık SİSTEM anahtarıdır (.env); kurulumdan yazılmadığı için
+# setup-driven client invalidation testi kaldırıldı. İKAS ve resolver hâlâ
+# müşteri-ayarı olduğundan onların invalidation'ı test edilir.
 
 
 def test_ikas_cache_invalidated_on_creds_change(env):
