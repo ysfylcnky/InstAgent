@@ -1472,20 +1472,32 @@ async def instagram_webhook(request: Request):
     if app_secret:
         signature = request.headers.get("X-Hub-Signature-256")
 
-        # === GECICI TESHIS — imza sorunu cozulunce BU BLOGU SIL ===
-        # Secret sizdirmaz: imzalarin yalniz ilk 16 karakteri yazilir.
+        # === GECICI TESHIS 2 — "govde mi, secret mi?" kesin ayrimi. Cozulunce SIL. ===
+        # Secret sizmaz (yalniz HMAC hex'leri loglanir). Ham govde offline
+        # dogrulama icin dosyaya yazilir; TEST BITINCE /app/last_webhook_body.bin
+        # silinmelidir (musteri mesaj icerigi barindirir).
         import hmac as _dbg_hmac, hashlib as _dbg_hashlib
-        _dbg_expected = "sha256=" + _dbg_hmac.new(
+        _dbg_expected = _dbg_hmac.new(
             app_secret.encode("utf-8"), raw_body, _dbg_hashlib.sha256
         ).hexdigest()
+        _dbg_recv = (signature or "").partition("=")[2].strip()
+        _dbg_match = _dbg_hmac.compare_digest(_dbg_expected, _dbg_recv)
+        _dbg_esc = raw_body.count(b"\\/")   # Meta'nin imzaladigi JSON'da kacisli slash
+        _dbg_sl = raw_body.count(b"/")      # toplam slash (proxy kacislari cozerse esc=0 olur)
+        _dbg_secret8 = _dbg_hashlib.sha256(app_secret.encode("utf-8")).hexdigest()[:8]
+        try:
+            with open("/app/last_webhook_body.bin", "wb") as _f:
+                _f.write(raw_body)
+        except Exception as _e:
+            print("[TESHIS2] govde dosyaya yazilamadi:", _e)
         print(
-            f"[TESHIS] header?={signature is not None} "
-            f"body_len={len(raw_body)} "
-            f"content_length={request.headers.get('content-length')} "
-            f"beklenen={_dbg_expected[:16]} "
-            f"gelen={(signature or '')[:16]}"
+            f"[TESHIS2] EslesTI={_dbg_match} body_len={len(raw_body)} "
+            f"secret_sha8={_dbg_secret8} kacisli_slash={_dbg_esc} toplam_slash={_dbg_sl} "
+            f"bas={raw_body[:1]!r} son={raw_body[-1:]!r}"
         )
-        # === /GECICI TESHIS ===
+        print(f"[TESHIS2] beklenen={_dbg_expected}")
+        print(f"[TESHIS2] gelen   ={_dbg_recv}")
+        # === /GECICI TESHIS 2 ===
 
         if not verify_webhook_signature(raw_body, signature, app_secret):
             print("⛔ Webhook imzası geçersiz/eksik — istek reddedildi (403).")
