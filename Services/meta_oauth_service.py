@@ -18,7 +18,9 @@ testlerde enjekte edilebilir (exchange_fn parametresi).
 
 import secrets
 from datetime import datetime, timedelta
+from urllib.parse import quote
 
+import requests
 from sqlalchemy import select
 
 from Services.db import get_session, tenant_scope
@@ -27,6 +29,23 @@ from Services import settings_service, tenant_service
 import config
 
 STATE_TTL_SECONDS = 600  # 10 dk
+
+# "Instagram API with Instagram Login" OAuth uçları (Facebook Sayfası yolu DEĞİL).
+# Doğrulandı: developers.facebook.com/docs/instagram-platform (bkz. docs/meta-integration.md).
+IG_AUTHORIZE_URL = "https://www.instagram.com/oauth/authorize"
+IG_TOKEN_URL = "https://api.instagram.com/oauth/access_token"       # code -> kısa ömürlü
+IG_GRAPH_TOKEN_URL = "https://graph.instagram.com/access_token"     # kısa -> uzun (ig_exchange_token)
+IG_GRAPH_REFRESH_URL = "https://graph.instagram.com/refresh_access_token"  # uzun -> uzun (yenile)
+IG_GRAPH_ME_URL = "https://graph.instagram.com/me"                  # hesap kimliği + kullanıcı adı
+
+# Mesajlaşan bot için gereken izinler. (Eski business_* scope'ları 27 Oca 2025'te
+# kaldırıldı; instagram_business_* güncel adlardır.)
+IG_DEFAULT_SCOPES = ["instagram_business_basic", "instagram_business_manage_messages"]
+
+# Instagram Login ile alınan token YALNIZ graph.instagram.com'a karşı geçerlidir;
+# bağlanınca gönderim tabanı buna sabitlenir (aksi halde graph.facebook.com'a
+# düşer ve mesaj gönderimi başarısız olur).
+IG_LOGIN_API_BASE = "graph.instagram.com"
 
 
 class OAuthError(Exception):
@@ -70,34 +89,148 @@ def consume_state(state):
 
 
 def build_authorize_url(tenant_id, user_id=None, redirect_uri=None, scopes=None):
-    """Meta OAuth authorize URL'ini üretir (state ile). Platform config kullanır."""
+    """Instagram Business Login authorize URL'ini üretir (state ile).
+
+    Instagram App kimliği + izinli redirect URI SİSTEM config'inden gelir
+    (IG_APP_ID/IG_REDIRECT_URI → yoksa META_APP_*). Kullanıcı burada mağazasını
+    yetkilendirir; geri dönüşte `?code` gelir (bkz. handle_callback).
+    """
     state = create_state(tenant_id, user_id)
-    app_id = config.META_APP_ID
-    redirect = redirect_uri or config.META_REDIRECT_URI or ""
-    scope = ",".join(scopes or ["instagram_basic", "instagram_manage_messages", "pages_messaging"])
-    # Not: gerçek uçta Meta'nın authorize endpoint'i kullanılır.
+    app_id = config.IG_APP_ID or ""
+    redirect = redirect_uri or config.IG_REDIRECT_URI or ""
+    scope = ",".join(scopes or IG_DEFAULT_SCOPES)
     return (
-        f"https://www.facebook.com/{config.IG_GRAPH_VERSION}/dialog/oauth"
-        f"?client_id={app_id}&redirect_uri={redirect}"
-        f"&state={state}&scope={scope}&response_type=code"
+        f"{IG_AUTHORIZE_URL}"
+        f"?client_id={quote(str(app_id))}"
+        f"&redirect_uri={quote(redirect)}"
+        f"&response_type=code"
+        f"&scope={quote(scope)}"
+        f"&state={state}"
     ), state
 
 
-def _exchange_code_for_token(code, redirect_uri=None):
-    """Yetki kodunu access token + IG Business Account ID ile değişir (Meta Graph).
+# --------------------------------------------------------------------------
+# İzole Graph çağrıları (`_graph_*` / `_ig_*`) — testte tek tek monkeypatch'lenir.
+# Hiçbiri token/secret loglamaz. Hata → OAuthError (kullanıcı dostu, sır sızmaz).
+# --------------------------------------------------------------------------
+def _graph_error(resp, fallback):
+    """Graph yanıtından güvenli, okunur bir hata mesajı çıkarır (secret basmaz)."""
+    try:
+        err = resp.json().get("error_message") or resp.json().get("error", {})
+        if isinstance(err, dict):
+            err = err.get("message")
+        return str(err or fallback)
+    except Exception:
+        return fallback
 
-    Gerçek uçta: code→token (app_secret ile), sonra token→bağlı IG hesap kimliği.
-    Bu fonksiyon testlerde monkeypatch/enjekte edilir. Token loglanmaz.
+
+def _ig_exchange_code_for_short_token(code, redirect_uri):
+    """authorization_code → kısa ömürlü Instagram user token. (app secret gövdede)."""
+    try:
+        r = requests.post(
+            IG_TOKEN_URL,
+            data={
+                "client_id": config.IG_APP_ID,
+                "client_secret": config.IG_APP_SECRET,
+                "grant_type": "authorization_code",
+                "redirect_uri": redirect_uri or config.IG_REDIRECT_URI or "",
+                "code": code,
+            },
+            timeout=15,
+        )
+    except requests.RequestException:
+        raise OAuthError("Instagram'a ulaşılamadı (token değişimi).")
+    if r.status_code != 200:
+        raise OAuthError("Yetki kodu doğrulanamadı: " + _graph_error(r, "geçersiz kod veya redirect."))
+    body = r.json()
+    token = body.get("access_token")
+    if not token:
+        raise OAuthError("Instagram kısa ömürlü token döndürmedi.")
+    return token
+
+
+def _ig_exchange_long_lived_token(short_token):
+    """Kısa ömürlü token → ~60 gün geçerli uzun ömürlü token (ig_exchange_token)."""
+    try:
+        r = requests.get(
+            IG_GRAPH_TOKEN_URL,
+            params={
+                "grant_type": "ig_exchange_token",
+                "client_secret": config.IG_APP_SECRET,
+                "access_token": short_token,
+            },
+            timeout=15,
+        )
+    except requests.RequestException:
+        raise OAuthError("Instagram'a ulaşılamadı (uzun ömürlü token).")
+    if r.status_code != 200:
+        raise OAuthError("Uzun ömürlü token alınamadı: " + _graph_error(r, "değişim reddedildi."))
+    token = r.json().get("access_token")
+    if not token:
+        raise OAuthError("Instagram uzun ömürlü token döndürmedi.")
+    return token
+
+
+def _ig_fetch_account(long_token):
+    """Bağlı profesyonel hesabın (user_id) ve kullanıcı adını döndürür.
+
+    `user_id` = Instagram profesyonel hesap kimliği; webhook `entry.id` /
+    mesaj `recipient.id` ile AYNIDIR (routing anahtarı). `id` app-scoped'tır ve
+    routing için YANLIŞTIR — bu yüzden `user_id` kullanılır.
     """
-    raise OAuthError(
-        "Token değişimi bu ortamda yapılandırılmadı (META_APP_SECRET / Graph API)."
-    )
+    try:
+        r = requests.get(
+            IG_GRAPH_ME_URL,
+            params={"fields": "user_id,username", "access_token": long_token},
+            timeout=15,
+        )
+    except requests.RequestException:
+        raise OAuthError("Instagram'a ulaşılamadı (hesap bilgisi).")
+    if r.status_code != 200:
+        raise OAuthError("Hesap bilgisi alınamadı: " + _graph_error(r, "profil okunamadı."))
+    body = r.json()
+    ig_account_id = body.get("user_id")
+    if not ig_account_id:
+        raise OAuthError("Instagram hesap kimliği (user_id) alınamadı.")
+    return str(ig_account_id), (body.get("username") or None)
+
+
+def _ig_refresh_long_lived_token(long_token):
+    """Uzun ömürlü token'ı ~60 gün daha uzatır (ig_refresh_token)."""
+    try:
+        r = requests.get(
+            IG_GRAPH_REFRESH_URL,
+            params={"grant_type": "ig_refresh_token", "access_token": long_token},
+            timeout=15,
+        )
+    except requests.RequestException:
+        raise OAuthError("Instagram'a ulaşılamadı (token yenileme).")
+    if r.status_code != 200:
+        raise OAuthError("Token yenilenemedi: " + _graph_error(r, "yenileme reddedildi."))
+    token = r.json().get("access_token")
+    if not token:
+        raise OAuthError("Instagram yenilenmiş token döndürmedi.")
+    return token
+
+
+def _exchange_code_for_token(code, redirect_uri=None):
+    """Yetki kodunu uzun ömürlü token + IG hesap kimliği + kullanıcı adı ile değişir.
+
+    Instagram Business Login akışı: code → kısa token → uzun token → /me. Dönüş
+    3'lü (token, ig_account_id, username). İzole `_ig_*` adımları testte
+    monkeypatch'lenir; bu yüzden burada gerçek ağ çağrısı test edilmeden çalışmaz.
+    Token/secret ASLA loglanmaz.
+    """
+    short_token = _ig_exchange_code_for_short_token(code, redirect_uri)
+    long_token = _ig_exchange_long_lived_token(short_token)
+    ig_account_id, username = _ig_fetch_account(long_token)
+    return long_token, ig_account_id, username
 
 
 def handle_callback(state, code, exchange_fn=None, redirect_uri=None):
     """OAuth callback: state doğrula → token al → tenant'a ŞİFRELİ bağla.
 
-    Döner: {tenant_id, ig_account_id}. Hata: OAuthError (fail-closed).
+    Döner: {tenant_id, ig_account_id, username}. Hata: OAuthError (fail-closed).
     """
     bound = consume_state(state)
     if bound is None:
@@ -106,7 +239,11 @@ def handle_callback(state, code, exchange_fn=None, redirect_uri=None):
     tenant_id = bound["tenant_id"]
 
     exchange = exchange_fn or _exchange_code_for_token
-    token, ig_account_id = exchange(code, redirect_uri)
+    # Dönüş 2'li (token, id) VEYA 3'lü (token, id, username) olabilir — enjekte
+    # edilen test exchange_fn'leri 2'li döndürür; gerçek akış username de verir.
+    result = exchange(code, redirect_uri)
+    token, ig_account_id = result[0], result[1]
+    username = result[2] if len(result) > 2 else None
     ig_account_id = str(ig_account_id)
 
     # Hedef IG hesabı BAŞKA bir tenant'a bağlıysa reddet (cross-tenant overwrite yok).
@@ -125,11 +262,17 @@ def handle_callback(state, code, exchange_fn=None, redirect_uri=None):
         tenant.ig_account_id = ig_account_id
 
     # Tenant ayarlarına yaz (token ŞİFRELİ — secret whitelist). Token loglanmaz.
+    # IG_API_BASE de graph.instagram.com'a sabitlenir: Instagram Login token'ı
+    # yalnız bu tabana karşı geçerlidir (gönderim aksi halde başarısız olur).
+    writes = {
+        "IG_ACCOUNT_ID": ig_account_id,
+        "IG_ACCESS_TOKEN": token,
+        "IG_API_BASE": IG_LOGIN_API_BASE,
+    }
+    if username:
+        writes["IG_USERNAME"] = username
     with tenant_scope(tenant_id):
-        settings_service.save_stored_settings({
-            "IG_ACCOUNT_ID": ig_account_id,
-            "IG_ACCESS_TOKEN": token,
-        })
+        settings_service.save_stored_settings(writes)
 
     # Hesap→tenant resolver cache'i (yeni ig_account_id) + bu tenant'ın kurulum
     # mandalı (IG creds artık bağlı olabilir) eskimesin (Faz B3).
@@ -140,4 +283,22 @@ def handle_callback(state, code, exchange_fn=None, redirect_uri=None):
     except Exception:
         pass
 
-    return {"tenant_id": tenant_id, "ig_account_id": ig_account_id}
+    return {"tenant_id": tenant_id, "ig_account_id": ig_account_id, "username": username}
+
+
+def refresh_token(tenant_id, refresh_fn=None):
+    """Tenant'ın uzun ömürlü Instagram token'ını yeniler (~60 gün uzatır).
+
+    "60 günde bir elle güncelle" derdini çözer: mevcut şifreli token çözülür,
+    Graph'tan yenisi alınır ve tekrar şifreli yazılır. Yalnız Instagram Login
+    (graph.instagram.com) token'ları yenilenebilir. `refresh_fn` testte enjekte
+    edilir. Başarı → {"ok": True}; hata → OAuthError (fail-closed, sır sızmaz).
+    """
+    refresh = refresh_fn or _ig_refresh_long_lived_token
+    with tenant_scope(tenant_id):
+        current = settings_service.get_stored_setting("IG_ACCESS_TOKEN")
+        if not current:
+            raise OAuthError("Yenilenecek Instagram token'ı yok — önce hesabı bağlayın.")
+        new_token = refresh(current)
+        settings_service.save_stored_settings({"IG_ACCESS_TOKEN": new_token})
+    return {"ok": True}

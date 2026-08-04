@@ -21,7 +21,7 @@ import re
 import csv
 import io
 import random
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote
 import config
 from Services.session_service import (
     store_product,
@@ -1323,19 +1323,39 @@ def admin_connect_instagram(ctx: dict = Depends(require_dashboard_auth)):
 
 
 @app.get("/connect/instagram/callback")
-def instagram_oauth_callback(code: str = None, state: str = None):
+def instagram_oauth_callback(code: str = None, state: str = None,
+                             error: str = None, error_description: str = None):
     """OAuth callback — state doğrulanır, token aktif tenant'a şifreli bağlanır.
 
-    Tenant kimliği state'ten çözülür (query'den DEĞİL); token loglanmaz.
+    Tenant kimliği state'ten çözülür (query'den DEĞİL); token loglanmaz. Tarayıcı
+    yönlendirmesi olduğu için Kurulum ekranına geri dönülür (JSON değil): başarıda
+    ?connected=1, hatada ?connect_error=... ile — setup.js bu bayrağı gösterir.
     """
+    setup_url = "/dashboard/settings/setup"
+
+    def _fail(msg):
+        return RedirectResponse(url=f"{setup_url}?connect_error={quote(str(msg))}", status_code=303)
+
+    if error:  # kullanıcı izni reddetti / Meta hata döndürdü
+        return _fail(error_description or error)
     if not code or not state:
-        return JSONResponse(status_code=400, content={"ok": False, "error": "code ve state gerekli."})
+        return _fail("code ve state gerekli.")
     try:
-        res = meta_oauth_service.handle_callback(state, code)
+        meta_oauth_service.handle_callback(state, code)
+    except meta_oauth_service.OAuthError as e:
+        return _fail(e)
+
+    return RedirectResponse(url=f"{setup_url}?connected=1", status_code=303)
+
+
+@app.post("/admin/connect/instagram/refresh")
+def admin_refresh_instagram(ctx: dict = Depends(require_dashboard_auth)):
+    """Aktif tenant'ın uzun ömürlü Instagram token'ını yeniler (~60 gün uzatır)."""
+    try:
+        res = meta_oauth_service.refresh_token(ctx["tenant_id"])
     except meta_oauth_service.OAuthError as e:
         return JSONResponse(status_code=400, content={"ok": False, "error": str(e)})
-
-    return {"ok": True, "connected": res}
+    return res
 
 
 # ======================================================================

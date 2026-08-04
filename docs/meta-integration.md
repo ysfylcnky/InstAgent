@@ -23,8 +23,9 @@ callbacks, the 24-hour messaging window, and how tenant secrets are encrypted.
 |---|---|---|---|
 | `/webhook` | GET | Meta subscription handshake — echoes `hub.challenge` if `hub.verify_token == VERIFY_TOKEN` | token match |
 | `/webhook` | POST | Inbound DM events | `X-Hub-Signature-256` HMAC (fail-closed) |
-| `/connect/instagram/callback` | GET | OAuth redirect target after the merchant authorizes | single-use `state` |
+| `/connect/instagram/callback` | GET | OAuth redirect target after the merchant authorizes; **redirects** back to the setup page (`?connected=1` / `?connect_error=…`) | single-use `state` |
 | `/admin/connect/instagram` | GET | Starts the connect flow (builds authorize URL) | panel auth |
+| `/admin/connect/instagram/refresh` | POST | Extends the tenant's long-lived IG token (~60 more days) | panel auth |
 | `/data-deletion` | POST | App-Review: user requested data deletion | `signed_request` HMAC |
 | `/data-deletion/status` | GET | Human-readable status page for a deletion code | — |
 | `/deauthorize` | POST | App-Review: user removed the app | `signed_request` HMAC |
@@ -55,35 +56,50 @@ Because the HMAC is over the raw bytes, the webhook handler reads
 
 ## Connect flow (OAuth)
 
-The merchant links their Instagram Business account so the platform can receive
-and send on their behalf. Platform-level app credentials
-(`META_APP_ID/SECRET/REDIRECT_URI`) live in `.env`; per-tenant tokens land in the
-`settings` table (encrypted).
+One-click **"Instagram'ı Bağla"** in the setup wizard links the merchant's
+Instagram Business account via **Instagram Business Login** (`graph.instagram.com`
+path — *not* the Facebook-Page path). Platform app credentials
+(`IG_APP_ID/IG_APP_SECRET/IG_REDIRECT_URI`, each falling back to the matching
+`META_APP_*`) live in `.env`; per-tenant token + account id + username land in the
+`settings` table (encrypted where secret).
 
 ```mermaid
 sequenceDiagram
     participant U as Merchant (panel)
     participant App as main.py
     participant OS as meta_oauth_service
-    participant Meta
+    participant IG as Instagram/Graph
 
     U->>App: GET /admin/connect/instagram
     App->>OS: build_authorize_url(tenant_id, user_id)
     OS->>OS: create_state → oauth_states (single-use, TTL)
-    OS-->>U: redirect to Meta authorize URL (state)
-    U->>Meta: authorize
-    Meta-->>App: GET /connect/instagram/callback?code&state
+    OS-->>U: authorize_url (www.instagram.com/oauth/authorize + state)
+    U->>IG: authorize (scopes: instagram_business_basic, _manage_messages)
+    IG-->>App: GET /connect/instagram/callback?code&state
     App->>OS: handle_callback(state, code)
     OS->>OS: consume_state (verify + delete; CSRF/tenant bind)
-    OS->>Meta: _exchange_code_for_token(code)
-    OS->>OS: store IG token + account id in tenant settings (encrypted)
+    OS->>IG: code → short token → long token → /me (user_id, username)
+    OS->>OS: store token/id/username + IG_API_BASE in tenant settings (encrypted)
+    App-->>U: redirect to setup (?connected=1)
 ```
+
+`_exchange_code_for_token` orchestrates three isolated `_ig_*` Graph steps
+(short-lived token → ~60-day long-lived token → `/me?fields=user_id,username`),
+each monkeypatched in tests. **`user_id` from `/me` is the routing key** (equals
+webhook `entry.id` / messaging `recipient.id`); the app-scoped `id` is *not* used.
+`handle_callback` writes `IG_ACCOUNT_ID`, `IG_ACCESS_TOKEN` (encrypted),
+`IG_USERNAME`, and pins `IG_API_BASE=graph.instagram.com` (the Instagram-Login
+token is only valid against that base). `refresh_token(tenant_id)` extends the
+long-lived token in place (the panel's *Token'ı Yenile* button).
 
 `create_state` / `consume_state` back the CSRF `state` with the `oauth_states`
 table (single-use, expiring, tenant/user-bound). Storing the account id also
-updates `Tenant.ig_account_id`, which is the webhook routing key
-([multi-tenancy](./multi-tenancy.md)). `handle_callback` accepts an injectable
-`exchange_fn` so tests avoid real Meta calls.
+updates `Tenant.ig_account_id`, the webhook routing key
+([multi-tenancy](./multi-tenancy.md)), and rejects an account already bound to
+another tenant. `handle_callback` accepts an injectable `exchange_fn` (2-tuple)
+so older tests avoid real Meta calls; the real path returns a 3-tuple with
+username. The **manual token-paste fields in the setup wizard remain** as a
+fallback. Tests: `tests/test_instagram_signup.py` (Graph mocked).
 
 ---
 

@@ -36,6 +36,19 @@ META_APP_ID = os.getenv("META_APP_ID")
 META_APP_SECRET = os.getenv("META_APP_SECRET")
 META_REDIRECT_URI = os.getenv("META_REDIRECT_URI")
 
+# ----------------------------------------------------------------------
+# Instagram Business Login (tek-tıkla bağlan) — OAuth kimlik bilgileri.
+# "Instagram API with Instagram Login" yolu, Facebook Sayfası yolundan AYRI bir
+# Instagram App ID/Secret kullanabilir (uygulama panosunda ayrı gösterilir).
+# Ayrıca bir değer verilmezse mevcut Meta App kimliğine (META_APP_*) düşülür ki
+# tek app kullanan kurulumlar ek yapılandırma yapmadan çalışsın. Bunlar SİSTEM
+# sırlarıdır; .env'de kalır, ASLA tenant_settings'e yazılmaz. Redirect URI, app
+# panosundaki izinli OAuth redirect listesinde birebir kayıtlı olmalıdır.
+# ----------------------------------------------------------------------
+IG_APP_ID = os.getenv("IG_APP_ID") or META_APP_ID
+IG_APP_SECRET = os.getenv("IG_APP_SECRET") or META_APP_SECRET
+IG_REDIRECT_URI = os.getenv("IG_REDIRECT_URI") or META_REDIRECT_URI
+
 # Tenant sırlarının şifrelenmesinde kullanılan sistem master anahtarı (Fernet).
 # crypto_service tembel okur; burada varlığı config üzerinden de görünür olsun.
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
@@ -192,6 +205,11 @@ def ig_api_base():
 
 def ig_graph_version():
     return get_setting("IG_GRAPH_VERSION", IG_GRAPH_VERSION)
+
+
+def ig_username():
+    # OAuth ile bağlanınca doldurulan Instagram kullanıcı adı (gösterim amaçlı).
+    return get_setting("IG_USERNAME", None)
 
 
 def openai_api_key():

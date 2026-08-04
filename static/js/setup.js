@@ -48,6 +48,7 @@ const Setup = {
     state: null,
     openId: null,
     tested: {},   // bölüm bazlı canlı test sonucu (ok/fail) — DB'den bağımsız yeşil/kırmızı
+    pendingMsg: null,  // OAuth dönüşünde render sonrası gösterilecek mesaj
 
     esc(s){
         return String(s == null ? "" : s)
@@ -121,6 +122,25 @@ const Setup = {
         const pill = `<span class="pill ${sec.status}" id="pill_${sec.id}">${STATUS_TEXT[sec.status] || sec.status}</span>`;
         const fields = sec.fields.map(f => this.fieldHtml(f)).join("");
 
+        // Instagram bölümünde "tek tıkla bağlan" paneli — access token, hesap ID
+        // ve kullanıcı adı OAuth ile otomatik doldurulur. Alanlar elle giriş için
+        // altında durur (fallback bozulmaz).
+        const connectPanel = sec.id === "instagram"
+            ? `<div class="ig-connect">
+                 <div class="ig-connect-top">
+                   <div class="ig-connect-txt">
+                     <strong>Tek tıkla bağlan</strong>
+                     <span>Instagram Business hesabını yetkilendir; access token, hesap ID ve kullanıcı adı otomatik doldurulur.</span>
+                   </div>
+                   <div class="ig-connect-actions">
+                     <button class="btn btn-primary" data-ig-connect><i class="fa-brands fa-instagram"></i> Instagram'ı Bağla</button>
+                     <button class="btn btn-ghost" data-ig-refresh title="Uzun ömürlü token'ı ~60 gün daha uzatır"><i class="fa-solid fa-rotate"></i> Token'ı Yenile</button>
+                   </div>
+                 </div>
+                 <div class="hint">Bağlanamıyorsan aşağıdaki alanları elle de doldurabilirsin.</div>
+               </div>`
+            : "";
+
         // Ürün API bölümünde canlı arama testi için sorgu kutusu (kaydedilmez)
         const testQuery = sec.id === "product"
             ? `<div class="field"><label>Test araması</label>
@@ -148,7 +168,7 @@ const Setup = {
                     <i class="fa-solid fa-chevron-down chev"></i>
                 </div>
                 <div class="acc-body">
-                    ${fields}${testQuery}
+                    ${connectPanel}${fields}${testQuery}
                     <div class="acc-actions">
                         ${saveBtn}${testBtn}
                         <span class="acc-msg" id="msg_${sec.id}"></span>
@@ -185,9 +205,55 @@ const Setup = {
             b.addEventListener("click", () => this.save(b.getAttribute("data-save"))));
         document.querySelectorAll("[data-test]").forEach(b =>
             b.addEventListener("click", () => this.test(b.getAttribute("data-test"))));
+        document.querySelectorAll("[data-ig-connect]").forEach(b =>
+            b.addEventListener("click", () => this.connectInstagram()));
+        document.querySelectorAll("[data-ig-refresh]").forEach(b =>
+            b.addEventListener("click", () => this.refreshInstagram()));
 
         this.applyTestFlags();
         this.updateProgress();
+
+        // OAuth dönüşünde (?connected / ?connect_error) bekleyen mesajı göster
+        if (this.pendingMsg){
+            this.msg("instagram", this.pendingMsg.text, this.pendingMsg.kind);
+            this.pendingMsg = null;
+        }
+    },
+
+    // OAuth authorize penceresine yönlendir — dönüşte callback ayarları doldurur
+    async connectInstagram(){
+        this.msg("instagram", "Instagram'a yönlendiriliyor…", "info");
+        try{
+            const res = await fetch("/admin/connect/instagram");
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.authorize_url){
+                this.msg("instagram", data.error || "Bağlantı başlatılamadı.", "err");
+                return;
+            }
+            window.location.href = data.authorize_url;
+        }catch(e){
+            console.error("ig connect", e);
+            this.msg("instagram", "Bağlantı başlatılamadı 🙏", "err");
+        }
+    },
+
+    async refreshInstagram(){
+        const btn = document.querySelector("[data-ig-refresh]");
+        if (btn) btn.disabled = true;
+        this.msg("instagram", "Token yenileniyor…", "info");
+        try{
+            const res = await fetch("/admin/connect/instagram/refresh", { method: "POST" });
+            const data = await res.json().catch(() => ({}));
+            this.msg("instagram",
+                (res.ok && data.ok) ? "Token yenilendi ✓ (~60 gün uzatıldı)."
+                                    : (data.error || "Token yenilenemedi."),
+                (res.ok && data.ok) ? "ok" : "err");
+        }catch(e){
+            console.error("ig refresh", e);
+            this.msg("instagram", "Token yenilenemedi 🙏", "err");
+        }finally{
+            if (btn) btn.disabled = false;
+        }
     },
 
     toggle(id){
@@ -340,6 +406,20 @@ const Setup = {
 
     init(){
         document.getElementById("btnComplete").addEventListener("click", () => this.complete());
+
+        // OAuth callback dönüşü: sonucu göster, Instagram bölümünü aç, URL'i temizle
+        const p = new URLSearchParams(window.location.search);
+        if (p.get("connected") === "1"){
+            this.pendingMsg = { text: "Instagram bağlantısı başarılı ✓ — bilgiler dolduruldu.", kind: "ok" };
+            this.openId = "instagram";
+        }else if (p.get("connect_error")){
+            this.pendingMsg = { text: "Instagram bağlanamadı: " + p.get("connect_error"), kind: "err" };
+            this.openId = "instagram";
+        }
+        if (p.has("connected") || p.has("connect_error")){
+            window.history.replaceState({}, "", window.location.pathname);
+        }
+
         this.load();
     }
 };
