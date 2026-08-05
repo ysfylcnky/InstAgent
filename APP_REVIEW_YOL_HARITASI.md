@@ -7,14 +7,14 @@ Kalan iş **8 madde** — 3'ü bloker.
 
 | # | İş | Kim | Blokerlik |
 |---|---|---|---|
-| K1 | Webhook imza doğrulaması prod'da gerçekten geçiyor mu? | Yusuf + kod | 🔴 BLOKER |
-| K2 | `main.py` içindeki geçici TEŞHİS bloğunu sil | Kod | 🔴 BLOKER |
-| K3 | Reviewer için demo panel hesabı + test akışı | Kod + Yusuf | 🔴 BLOKER |
+| K7 | **Screencast (İngilizce altyazılı)** — birincil kanıt | Yusuf | 🔴 BLOKER |
+| K3 | Reviewer panel hesabı + Standard Access açıklaması | Yusuf | 🔴 BLOKER |
+| K5 | App ayarları: ikon 1024×1024, kategori, business e-posta | Yusuf (panel) | 🔴 BLOKER |
 | K4 | Instagram bağlan butonu — marka uyumu + İngilizce | Kod | 🟠 Yüksek risk |
-| K5 | App ayarları: ikon 1024×1024, kategori, business e-posta | Yusuf (panel) | 🟠 Yüksek risk |
-| K6 | Instagram Testers'a hesap ekle | Yusuf (panel) | 🟠 Yüksek risk |
-| K7 | Screencast (İngilizce altyazılı) | Yusuf | 🟠 Yüksek risk |
-| K8 | Submission metinleri (izin gerekçeleri + reviewer talimatı) | Kod (hazırlanacak) | 🟡 Gerekli |
+| K6 | Instagram Testers'a hesap ekleme (reviewer talebinde) | Yusuf (panel) | 🟠 Yüksek risk |
+| K1 | Webhook imzası prod'da geçiyor mu | Yusuf | ✅ Çözüldü |
+| K2 | `main.py` geçici TEŞHİS bloğunu sil | Kod | ✅ Yapıldı |
+| K8 | Submission metinleri (izin gerekçeleri + reviewer talimatı) | Kod | ✅ Yapıldı → `APP_REVIEW_SUBMISSION.md` |
 
 > **Business Verification** hâlâ Meta'da incelemede. Advanced Access onayı bunsuz
 > verilmez, ama submission'ı paralel hazırlayabiliriz — verification bitince
@@ -78,17 +78,43 @@ Meta'nın App Verification adımı aynen şunu istiyor:
 "Ücretsiz Dene" formu (`POST /kayit`) sadece lead kaydediyor, hesap açmıyor.
 Reviewer kendi başına giremez.
 
-**Yapılacak:**
+### Standard Access gerçeği (önemli)
 
-1. Reviewer için ayrı bir **demo tenant + panel kullanıcısı** aç
-   (ör. `metareview` / güçlü şifre). Kendi canlı tenant'ından ayrı olsun ki
-   reviewer gerçek müşteri verisi görmesin.
-2. Bu tenant'a kendi test IG Business hesabını bağla **veya** reviewer'ın kendi
-   hesabını bağlayabilmesi için Kurulum ekranını erişilebilir bırak.
+Meta'nın kendi dokümanı:
+
+> *"Because of the limited scope of Standard Access, some features might not work
+> properly until your app has been granted Advanced Access."*
+
+Advanced Access onaylanana kadar bot **yalnızca app'te rolü olan hesaplara**
+cevap verir. Bu yüzden sen kendi bireysel IG hesabını Instagram Tester olarak
+eklemek zorunda kaldın. Reviewer'ın hesabında da rol olmayacağı için canlı DM
+testi onun için de çalışmayacak.
+
+**Sonucu:** Ayrı bir IG hesabı açıp demo tenanta bağlamanın reviewer'a **hiçbir
+faydası yok** — o hesaba da mesaj atamaz. Karar bu yüzden basitleşiyor.
+
+### Yapılacak
+
+1. **Mevcut tenant'ına** (mumifashion bağlı olan) reviewer için ayrı bir panel
+   kullanıcısı aç. Zaten çalışan, gerçek bir kurulum — en düşük riskli seçenek.
+2. Veri temizliğine **gerek yok** — tenant'taki tüm konuşma/sipariş kayıtları
+   senin kendi test hesaplarından attığın deneme mesajları, gerçek müşteri
+   verisi yok. Bunu reviewer'a açıkça bildiriyoruz (metin
+   `APP_REVIEW_SUBMISSION.md` §1 adım 9 ve §2'de hazır) ki test verisini gerçek
+   kullanıcı verisi sanmasın.
 3. Kimlik bilgilerini submission'ın "Credentials" alanına gir.
+4. Talimatta Standard Access kısıtını **açıkça yaz** ve reviewer'ın handle'ını
+   bildirmesi halinde birkaç saat içinde Instagram Tester olarak ekleyeceğini
+   taahhüt et. (Metin `APP_REVIEW_SUBMISSION.md` §1 ve §2'de hazır.)
+   Gizlemeye çalışmak red sebebi; dürüst açıklama kabul gören kalıptır.
+5. **Submission gönderdikten sonra e-postanı günlük kontrol et** — reviewer
+   handle bildirirse hızlı ekle. Yanıtsız kalırsa red gelir.
 
 > ⚠️ Sahte Facebook/Instagram hesabı **kullanma** — Meta bunu tespit ederse tüm
 > submission reddedilir. Kendi gerçek hesabın uygun.
+>
+> ℹ️ Bu kısıt yüzünden **screencast (K7) senin birincil kanıtın** — reviewer
+> canlı test edemeyebileceği için karar büyük ölçüde videoya bakılarak verilir.
 
 ---
 

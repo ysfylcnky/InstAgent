@@ -54,8 +54,25 @@ STEP-BY-STEP TEST INSTRUCTIONS
    (@<TEST_IG_HESABI>). If you prefer to observe rather than connect your own
    account, skip to step 5.
 
-5. From any second Instagram account, open @<TEST_IG_HESABI> in Instagram and
-   send a Direct Message, for example:
+   IMPORTANT — HOW TO TEST LIVE MESSAGING
+   Our app currently has Standard Access for instagram_business_manage_messages,
+   which, as documented by Meta, limits messaging to accounts that have a role on
+   the app. If you send a Direct Message from an account without a role, the
+   automated reply will not be delivered — this is the Standard Access limitation
+   we are asking to have lifted, not a defect in our app.
+
+   To let you test live, please reply to this submission with the Instagram
+   handle you will message from and we will add it as an Instagram Tester within
+   a few hours; you will receive an invite to accept in your Instagram settings.
+   We monitor the submission thread daily and can also be reached at
+   info@mumifashion.com.
+
+   In the meantime, the attached screencast shows the complete end-to-end flow
+   with a real Instagram professional account and a real customer account, so
+   both permissions can be verified without waiting.
+
+5. Once your account has been added as an Instagram Tester, open
+   @<TEST_IG_HESABI> in Instagram and send a Direct Message, for example:
        "Bu urun stokta var mi?"   (Turkish for "Is this product in stock?")
 
 6. Within a few seconds the business account replies automatically, for example:
@@ -76,6 +93,15 @@ STEP-BY-STEP TEST INSTRUCTIONS
 9. Back in the dashboard, open "Konusmalar" (Conversations) in the left sidebar.
    The same conversation you just had is listed there, which is how the merchant
    reviews what the assistant said on their behalf.
+
+   NOTE ON THE DATA YOU WILL SEE
+   Every conversation, customer record and order visible in this workspace was
+   created by us during development. They were sent from our own Instagram
+   accounts, which are registered as Instagram Testers on this app, acting as
+   sample customers to exercise the product flow. No message from a real member
+   of the public is stored in this workspace, so you are not viewing any third
+   party's personal data. The product has not been sold to any merchant yet;
+   this App Review is what allows us to start serving real merchants.
 
 LANGUAGE NOTE
 The assistant and the dashboard are in Turkish because every merchant and every
@@ -110,14 +136,20 @@ URL:      https://ig.mumifashion.com/login
 Username: <DEMO_KULLANICI>
 Password: <DEMO_SIFRE>
 
-This account is a demo merchant tenant created specifically for this review. An
-Instagram professional account (@<TEST_IG_HESABI>) is already connected to it,
-so the reviewer can either observe the existing connection or connect their own
-professional account from the Setup page.
+This is a review account on our own merchant workspace. The Instagram
+professional account @<TEST_IG_HESABI> is already connected to it, so you can
+inspect the connection, the Setup wizard and the Conversations view immediately
+after logging in.
 
-No Instagram credentials are required to observe the messaging behaviour: simply
-send a Direct Message to @<TEST_IG_HESABI> from any Instagram account and the
-automated reply will arrive within seconds.
+All conversations and orders in this workspace are our own development test
+data, sent from our Instagram Tester accounts acting as sample customers. No
+real end user's messages are stored here.
+
+To exchange live Direct Messages with @<TEST_IG_HESABI>, your Instagram account
+needs a role on our app while we are still on Standard Access. Please reply with
+the handle you will message from and we will add it as an Instagram Tester
+within a few hours (contact: info@mumifashion.com). The attached screencast
+demonstrates the full flow end to end in the meantime.
 ```
 
 ---

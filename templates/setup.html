@@ -94,6 +94,25 @@
 .ig-connect .hint{ font-size:11.5px; color:var(--muted); margin-top:10px; }
 @media (max-width:600px){ .ig-connect-actions .btn{ flex:1; justify-content:center; } }
 
+/* İngilizce yardımcı metin — Meta App Review reviewer'ı Türkçe arayüzü
+   anlayabilsin diye her etiketin yanında İngilizce karşılığı durur. */
+.en{ opacity:.72; font-style:italic; font-weight:600; }
+.ig-connect-txt strong .en{ font-size:11px; font-weight:600; margin-left:6px; }
+.ig-connect-txt > span .en{ display:block; margin-top:4px; }
+.ig-connect .hint .en{ display:block; margin-top:2px; }
+.ig-connect-txt code{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:10.5px; }
+
+/* Business Login for Instagram butonu — Meta App Review "login button visible"
+   şartı için belirgin ve çift dilli. Instagram glyph'i değiştirilmez. */
+.btn-ig-login{
+    background:linear-gradient(90deg,#8b5cf6,#e1306c,#f77737);
+    border:none; color:#fff; font-weight:800;
+    display:inline-flex; align-items:center; gap:9px; padding:11px 18px;
+}
+.btn-ig-login i{ font-size:17px; }
+.btn-ig-login .en{ opacity:.85; font-weight:600; font-style:normal; }
+.btn-ig-login .en::before{ content:"· "; }
+
 .acc-actions{ display:flex; align-items:center; gap:12px; margin-top:6px; flex-wrap:wrap; }
 .btn{
     border:none; cursor:pointer; border-radius:10px; padding:11px 18px;

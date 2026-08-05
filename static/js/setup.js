@@ -129,15 +129,22 @@ const Setup = {
             ? `<div class="ig-connect">
                  <div class="ig-connect-top">
                    <div class="ig-connect-txt">
-                     <strong>Tek tıkla bağlan</strong>
-                     <span>Instagram Business hesabını yetkilendir; access token, hesap ID ve kullanıcı adı otomatik doldurulur.</span>
+                     <strong>Tek tıkla bağlan <span class="en">Business Login for Instagram</span></strong>
+                     <span>Instagram Business hesabını yetkilendir; access token, hesap ID ve kullanıcı adı otomatik doldurulur.
+                       <span class="en">Authorize your Instagram professional account. The app requests
+                       <code>instagram_business_basic</code> and <code>instagram_business_manage_messages</code>.</span></span>
                    </div>
                    <div class="ig-connect-actions">
-                     <button class="btn btn-primary" data-ig-connect><i class="fa-brands fa-instagram"></i> Instagram'ı Bağla</button>
+                     <button class="btn btn-primary btn-ig-login" data-ig-connect aria-label="Connect with Instagram">
+                       <i class="fa-brands fa-instagram"></i>
+                       <span>Instagram'ı Bağla</span>
+                       <span class="en">Connect with Instagram</span>
+                     </button>
                      <button class="btn btn-ghost" data-ig-refresh title="Uzun ömürlü token'ı ~60 gün daha uzatır"><i class="fa-solid fa-rotate"></i> Token'ı Yenile</button>
                    </div>
                  </div>
-                 <div class="hint">Bağlanamıyorsan aşağıdaki alanları elle de doldurabilirsin.</div>
+                 <div class="hint">Bağlanamıyorsan aşağıdaki alanları elle de doldurabilirsin.
+                   <span class="en">If the connection fails you can fill the fields below manually.</span></div>
                </div>`
             : "";
 
