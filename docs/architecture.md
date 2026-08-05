@@ -142,15 +142,24 @@ page's JS (`static/js/*.js`) fetches. They pair up (e.g. `/dashboard/customers`
   `require_dashboard_auth` is the FastAPI dependency guarding panel routes;
   `require_superadmin` / `require_platform_operator` gate platform routes
   (`/admin/platform/*`).
-- **Legacy fallback:** if no DB `User` exists yet (original single-tenant "Mumi"
-  install), login falls back to `.env` `DASHBOARD_USER` + `DASHBOARD_PASSWORD_HASH`
-  and assumes `DEFAULT_TENANT_ID = 1`. Fail-closed: with no password configured,
-  the panel is locked.
+- **Panel credentials are tenant-owned.** The login email + bcrypt hash live in
+  the `users` table, one owner row per tenant, written by the setup wizard's
+  *Gelişmiş* section (`PANEL_EMAIL` / `PANEL_PASSWORD`, `target="account"`) via
+  `user_service.upsert_tenant_owner`. They must **never** go back into `.env`:
+  it is a single shared file, so a second tenant completing setup would
+  overwrite the first tenant's login. Tests: `tests/test_panel_account.py`.
+- **Legacy bootstrap fallback:** if no DB `User` matches, login falls back to
+  `.env` `DASHBOARD_USER` + `DASHBOARD_PASSWORD_HASH` and assumes
+  `DEFAULT_TENANT_ID = 1`. This exists only to get into a fresh install; delete
+  those two keys from `.env` once a real user exists. Fail-closed: with neither
+  a DB user nor a configured hash, the panel is locked.
 - **Setup wizard** (`Services/setup_service.py`): section-based
   (Instagram/OpenAI/İKAS/notifications) with per-section "Test" calls to the live
-  APIs before "Complete". Writes go to the `settings` table (secrets encrypted);
-  it can also patch `.env` in place. See [meta-integration](./meta-integration.md)
-  for how connect/credentials feed this.
+  APIs before "Complete". Each field declares a `target`: `setting` → `settings`
+  table (secrets encrypted), `account` → `users` table (panel login),
+  `env` → patches `.env` in place (platform-level only), `readonly` → displayed
+  but not writable. See [meta-integration](./meta-integration.md) for how
+  connect/credentials feed this.
 - **Reporting** (`Services/dashboard_service.py`): business/usage/performance
   summaries, conversation & customer lists with pagination, AI-usage detail, and
   CSV exports. Reads only; all queries run inside the active `tenant_scope`.

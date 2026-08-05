@@ -161,8 +161,11 @@ SECTIONS = [
     {
         "id": "advanced", "required": False, "test": False,
         "fields": {
-            "DASHBOARD_USER":     {"type": "text", "target": "env"},
-            "DASHBOARD_PASSWORD": {"type": "text", "secret": True, "target": "env", "min_len": 8},
+            # Panel girişi TENANT'A AİTTİR → users tablosu (target="account").
+            # .env'de tutulamaz: ortak dosya olduğu için ikinci bir tenant
+            # birincinin giriş bilgisini ezerdi. Bkz. user_service.upsert_tenant_owner.
+            "PANEL_EMAIL":    {"type": "email", "target": "account"},
+            "PANEL_PASSWORD": {"type": "text", "secret": True, "target": "account", "min_len": 8},
             "MYSQL_HOST":     {"type": "text", "target": "readonly"},
             "MYSQL_PORT":     {"type": "number", "target": "readonly"},
             "MYSQL_USER":     {"type": "text", "target": "readonly"},
@@ -216,6 +219,17 @@ def _db_ok():
 def _current_value(key, meta, env_vals, stored):
     if meta["target"] == "setting":
         return stored.get(key)
+    if meta["target"] == "account":
+        # Panel girişi users tablosunda. Parola asla geri okunmaz; email
+        # gösterilir ki merchant hangi adresle girdiğini görebilsin.
+        if key != "PANEL_EMAIL":
+            return None
+        try:
+            from Services.user_service import get_tenant_owner
+            owner = get_tenant_owner(_tenant_key())
+            return owner.email if owner is not None else None
+        except Exception:
+            return None
     return env_vals.get(key) or os.getenv(key)
 
 
@@ -362,6 +376,8 @@ def _validate(key, meta, value):
         return "Mağaza adı yalnız küçük harf, rakam ve tire içerebilir."
     if t == "token" and re.search(r"\s", value):
         return "Verify token boşluk içeremez."
+    if t == "email" and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", value):
+        return "Geçerli bir e-posta adresi girin."
     if t == "iban":
         v = value.replace(" ", "").upper()
         if not re.fullmatch(r"TR\d{24}", v):
@@ -392,6 +408,7 @@ def save_section(section_id, fields):
 
     env_writes = {}
     setting_writes = {}
+    account_writes = {}   # panel girişi → users tablosu (tenant'a ait)
     restart_required = False
 
     for key, meta in sec["fields"].items():
@@ -419,6 +436,8 @@ def save_section(section_id, fields):
 
         if meta["target"] == "setting":
             setting_writes[key] = val
+        elif meta["target"] == "account":
+            account_writes[key] = val
         else:
             env_writes[key] = val
             restart_required = True
@@ -443,14 +462,21 @@ def save_section(section_id, fields):
         if not save_stored_settings(setting_writes):
             return {"ok": False, "error": "Ayar kaydedilemedi (DB erişilemiyor olabilir)."}
 
-    # Panel parolası düz metin olarak .env'e YAZILMAZ. bcrypt ile hash'lenip
-    # DASHBOARD_PASSWORD_HASH olarak yazılır — auth katmanı bu hash'i kullanır.
-    # (Aksi halde .env'de zaten bir hash varken düz metin parola hiç etkili olmaz.)
-    if "DASHBOARD_PASSWORD" in env_writes:
-        from Services.auth_service import hash_password
-        env_writes["DASHBOARD_PASSWORD_HASH"] = hash_password(
-            env_writes.pop("DASHBOARD_PASSWORD")
-        )
+    # Panel girişi tenant'a aittir → users tablosu. Parola bcrypt ile hash'lenir
+    # (upsert_tenant_owner içinde); düz metin hiçbir yere yazılmaz. .env'e panel
+    # kullanıcısı YAZILMAZ — ortak dosya olduğu için tenant'lar birbirini ezerdi.
+    if account_writes:
+        try:
+            from Services.user_service import upsert_tenant_owner
+            upsert_tenant_owner(
+                _tenant_key(),
+                email=account_writes.get("PANEL_EMAIL") or None,
+                password=account_writes.get("PANEL_PASSWORD") or None,
+            )
+        except ValueError as e:
+            return {"ok": False, "error": str(e)}
+        except Exception as e:
+            return {"ok": False, "error": f"Panel girişi kaydedilemedi: {e}"}
 
     if env_writes:
         try:
@@ -460,7 +486,8 @@ def save_section(section_id, fields):
         except Exception as e:
             return {"ok": False, "error": f".env yazılamadı: {e}"}
 
-    saved_keys = list(setting_writes.keys()) + list(env_writes.keys())
+    saved_keys = (list(setting_writes.keys()) + list(env_writes.keys())
+                  + list(account_writes.keys()))
     _invalidate_caches_for_saved(saved_keys)
 
     return {
