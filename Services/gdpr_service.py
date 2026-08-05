@@ -115,4 +115,15 @@ def deauthorize_tenant(ig_account_id):
     # Hesap→tenant çözümleme cache'i eskimesin.
     tenant_service.invalidate(ig_account_id)
 
+    # Kurulum-tamamlandı mandalı da sıfırlanmalı. `is_setup_complete` tek yönlü
+    # bir mandal kullanıyor (geçici DB kesintisinde kullanıcı Kurulum ekranına
+    # düşmesin diye). Burada sıfırlamazsak IG_ACCESS_TOKEN silinmiş olmasına
+    # rağmen mandal True kalır: merchant dashboard'u gezmeye devam eder ama bot
+    # sessizdir. Sıfırlayınca `_setup_gate` onu Kurulum ekranına yönlendirir.
+    try:
+        from Services import setup_service
+        setup_service.reset_setup_cache(tenant_id)
+    except Exception:
+        pass
+
     return {"deactivated": True, "tenant_id": tenant_id}

@@ -122,3 +122,30 @@ def test_reconnect_does_not_revive_operator_suspended_tenant(client):
     )
 
     assert _status(TENANT_A) == "suspended"
+
+
+def test_deauthorize_resets_setup_latch(client):
+    """Bağlantı kesilince kurulum "tamam" mandalı da düşmeli.
+
+    `is_setup_complete` tek yönlü bir mandal kullanır. Deauthorize IG_ACCESS_TOKEN'ı
+    sildiği halde mandal True kalırsa merchant dashboard'u gezmeye devam eder ama
+    bot sessizdir — kullanıcı neyin bozuk olduğunu anlamaz.
+    """
+    from Services import setup_service
+
+    with tenant_scope(TENANT_A):
+        settings_service.save_stored_settings({
+            "IG_ACCOUNT_ID": IG_ACCOUNT_A,
+            "IG_ACCESS_TOKEN": "TOKEN",
+            "IKAS_STORE_NAME": "magaza",
+            "IKAS_CLIENT_ID": "cid",
+            "IKAS_CLIENT_SECRET": "csecret",
+            "SETUP_COMPLETED": "1",
+        })
+        assert setup_service.is_setup_complete() is True   # mandal kuruldu
+
+    client.post("/deauthorize", data={"signed_request": _signed(IG_ACCOUNT_A)})
+
+    with tenant_scope(TENANT_A):
+        # Token silindi → kurulum artık tamam sayılmamalı (mandal sıfırlandı)
+        assert setup_service.is_setup_complete() is False

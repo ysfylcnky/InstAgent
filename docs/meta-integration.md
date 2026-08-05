@@ -137,7 +137,11 @@ user after 24h; the API will reject it.
   deletion must sweep all of them.
 - `deauthorize_tenant(ig_account_id)` — handles a merchant removing the app:
   `tenants.status = "inactive"` + clears `IG_ACCESS_TOKEN` + invalidates the
-  resolver cache.
+  resolver cache **and** `setup_service.reset_setup_cache(tenant_id)`. That last
+  call matters: `is_setup_complete` is a one-way latch (so a transient DB outage
+  doesn't dump a live merchant back into the wizard), so without resetting it the
+  merchant keeps browsing a dashboard whose bot is dead. Test:
+  `tests/test_deauthorize.py::test_deauthorize_resets_setup_latch`.
 
 **Reconnect path (don't break this).** Routing only resolves `status == "active"`
 tenants, so `handle_callback` flips `inactive` → `active` on a successful
