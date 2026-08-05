@@ -261,6 +261,19 @@ def handle_callback(state, code, exchange_fn=None, redirect_uri=None):
             raise OAuthError("Tenant bulunamadı.")
         tenant.ig_account_id = ig_account_id
 
+        # Deauthorize sonrası YENİDEN BAĞLANMA: /deauthorize tenant'ı
+        # status="inactive" yapar (bkz. gdpr_service.deauthorize_tenant) ve
+        # routing yalnız "active" tenant'ları çözer (tenant_service). Burada geri
+        # açmazsak müşteri panelde "bağlandı" görür ama webhook'lar fail-closed
+        # reddedilir ve bot sessiz kalır.
+        #
+        # Yalnız "inactive" → "active" geçişi yapılır. Operatörün başka bir
+        # gerekçeyle (ör. ödeme/askıya alma) koyduğu bir durumu Instagram'ı
+        # yeniden bağlayarak kendi kendine açmak MÜMKÜN OLMAMALI; bu yüzden
+        # koşul dar tutulur.
+        if tenant.status == "inactive":
+            tenant.status = "active"
+
     # Tenant ayarlarına yaz (token ŞİFRELİ — secret whitelist). Token loglanmaz.
     # IG_API_BASE de graph.instagram.com'a sabitlenir: Instagram Login token'ı
     # yalnız bu tabana karşı geçerlidir (gönderim aksi halde başarısız olur).

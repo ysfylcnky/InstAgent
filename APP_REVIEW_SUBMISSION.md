@@ -14,7 +14,10 @@ girilmez.
 
 > **Alan:** "Provide detailed step-by-step instructions for Meta reviewers to log
 > in and test your app." Platform: **Web** (Instagram Login yalnız web'i destekler).
-> `<DEMO_KULLANICI>` / `<DEMO_SIFRE>` / `<TEST_IG_HESABI>` yerlerini doldur.
+>
+> Tüm alanlar dolduruldu — panel: `metareview@mumifashion.com` / `Meta.Test44`
+> (tenant 1 · rol `member`), bağlı hesap: `@mumifashion`
+> (`17841477371075573`). Olduğu gibi kopyalanabilir.
 
 ```
 PLATFORM: Web
@@ -51,7 +54,7 @@ STEP-BY-STEP TEST INSTRUCTIONS
    the only use of instagram_business_basic.
 
    NOTE: An Instagram professional account is already connected for this review
-   (@<TEST_IG_HESABI>). If you prefer to observe rather than connect your own
+   (@mumifashion). If you prefer to observe rather than connect your own
    account, skip to step 5.
 
    IMPORTANT — HOW TO TEST LIVE MESSAGING
@@ -72,7 +75,7 @@ STEP-BY-STEP TEST INSTRUCTIONS
    both permissions can be verified without waiting.
 
 5. Once your account has been added as an Instagram Tester, open
-   @<TEST_IG_HESABI> in Instagram and send a Direct Message, for example:
+   @mumifashion in Instagram and send a Direct Message, for example:
        "Bu urun stokta var mi?"   (Turkish for "Is this product in stock?")
 
 6. Within a few seconds the business account replies automatically, for example:
@@ -133,11 +136,11 @@ app secret and reject unsigned requests.
 ```
 InstaAgent merchant dashboard (web)
 URL:      https://ig.mumifashion.com/login
-Username: <DEMO_KULLANICI>
-Password: <DEMO_SIFRE>
+Username: metareview@mumifashion.com
+Password: Meta.Test44
 
 This is a review account on our own merchant workspace. The Instagram
-professional account @<TEST_IG_HESABI> is already connected to it, so you can
+professional account @mumifashion is already connected to it, so you can
 inspect the connection, the Setup wizard and the Conversations view immediately
 after logging in.
 
@@ -145,7 +148,7 @@ All conversations and orders in this workspace are our own development test
 data, sent from our Instagram Tester accounts acting as sample customers. No
 real end user's messages are stored here.
 
-To exchange live Direct Messages with @<TEST_IG_HESABI>, your Instagram account
+To exchange live Direct Messages with @mumifashion, your Instagram account
 needs a role on our app while we are still on Standard Access. Please reply with
 the handle you will message from and we will add it as an Instagram Tester
 within a few hours (contact: info@mumifashion.com). The attached screencast

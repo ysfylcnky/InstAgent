@@ -68,3 +68,57 @@ def test_unknown_account_is_failsafe_ok(client):
     assert r.status_code == 200
     assert r.json() == {"ok": True}
     assert _status(TENANT_A) == "active"
+
+
+# ----------------------------------------------------------------------
+# Deauthorize → YENİDEN BAĞLANMA (regresyon)
+# ----------------------------------------------------------------------
+# /deauthorize tenant'ı inactive yapar; routing yalnız "active" tenant'ı çözer.
+# OAuth ile yeniden bağlanınca status geri açılmazsa müşteri panelde "bağlandı"
+# görür ama bot sonsuza kadar sessiz kalır (webhook fail-closed reddedilir).
+
+def test_reconnect_after_deauthorize_reactivates_tenant(client):
+    from Services import meta_oauth_service
+
+    # 1) Uygulama kaldırıldı → tenant pasif, resolver artık çözmüyor
+    r = client.post("/deauthorize", data={"signed_request": _signed(IG_ACCOUNT_A)})
+    assert r.status_code == 200
+    assert _status(TENANT_A) == "inactive"
+    tenant_service.invalidate()
+    assert tenant_service.resolve_tenant_by_ig_account_id(IG_ACCOUNT_A) is None
+
+    # 2) Merchant panelden yeniden bağlanıyor (Graph çağrıları mocklu)
+    state = meta_oauth_service.create_state(TENANT_A, None)
+    meta_oauth_service.handle_callback(
+        state, "kod",
+        exchange_fn=lambda code, redirect_uri=None: (
+            "YENI_TOKEN", IG_ACCOUNT_A, "mumifashion",
+        ),
+    )
+
+    # 3) Tenant tekrar aktif ve routing çözüyor
+    assert _status(TENANT_A) == "active"
+    tenant_service.invalidate()
+    assert tenant_service.resolve_tenant_by_ig_account_id(IG_ACCOUNT_A) == TENANT_A
+
+    with tenant_scope(TENANT_A):
+        assert settings_service.get_stored_setting("IG_ACCESS_TOKEN") == "YENI_TOKEN"
+
+
+def test_reconnect_does_not_revive_operator_suspended_tenant(client):
+    """Operatör başka bir gerekçeyle askıya aldıysa (ör. ödeme) Instagram'ı
+    yeniden bağlamak tenant'ı kendi kendine açmamalı."""
+    from Services import meta_oauth_service
+
+    with get_session(scoped=False) as s:
+        s.get(Tenant, TENANT_A).status = "suspended"
+
+    state = meta_oauth_service.create_state(TENANT_A, None)
+    meta_oauth_service.handle_callback(
+        state, "kod",
+        exchange_fn=lambda code, redirect_uri=None: (
+            "TOKEN", IG_ACCOUNT_A, "mumifashion",
+        ),
+    )
+
+    assert _status(TENANT_A) == "suspended"

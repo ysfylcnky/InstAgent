@@ -135,7 +135,18 @@ user after 24h; the API will reject it.
   everywhere the IGSID appears (it maps to `sender` / `customer_phone` / `phone`
   depending on the table). A single IGSID can exist under multiple tenants, so
   deletion must sweep all of them.
-- `deauthorize_tenant(ig_account_id)` — handles a merchant removing the app.
+- `deauthorize_tenant(ig_account_id)` — handles a merchant removing the app:
+  `tenants.status = "inactive"` + clears `IG_ACCESS_TOKEN` + invalidates the
+  resolver cache.
+
+**Reconnect path (don't break this).** Routing only resolves `status == "active"`
+tenants, so `handle_callback` flips `inactive` → `active` on a successful
+reconnect. Without it a merchant who removed and re-added the app would see
+"connected" in the panel while every webhook was silently rejected. The flip is
+deliberately narrow — only from `inactive`, so a tenant the operator suspended
+for another reason cannot revive itself by reconnecting Instagram. Tests:
+`tests/test_deauthorize.py::test_reconnect_after_deauthorize_reactivates_tenant`
+and `::test_reconnect_does_not_revive_operator_suspended_tenant`.
 
 `/data-deletion` returns the Meta-expected `{url, confirmation_code}` shape;
 `/data-deletion/status` renders `templates/deletion_status.html`.
