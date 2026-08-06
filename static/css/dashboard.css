@@ -23,7 +23,9 @@
     --pink:#7C4DFF;
     --red:#FB7185;
 
-    /* Instagram marka paleti + imza gradyanı */
+    /* Mumio marka paleti + imza gradyanı.
+       Meta marka kuralları: Instagram/WhatsApp renk kimliği KULLANILMAZ.
+       Mor → indigo → camgöbeği (IG mor→pembe→turuncuya gider, karışmaz). */
     --brand-blue:#3B34B8;
     --brand-purple:#6D4AFF;
     --brand-magenta:#5B45E0;
