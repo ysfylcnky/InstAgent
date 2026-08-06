@@ -1,17 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Mumio markası. Meta/Instagram/WhatsApp glyph'i ya da renk kimliği KULLANILMAZ
+       (Meta marka kuralları: kendi markalarına benzer mark kullanılamaz).
+       Nötr mark: konuşma balonu + kıvılcım (AI). App ikonuyla aynı dil. -->
   <defs>
-    <linearGradient id="ig" x1="0" y1="1" x2="1" y2="0">
-      <stop offset="0%" stop-color="#FCAF45"/>
-      <stop offset="22%" stop-color="#F56040"/>
-      <stop offset="42%" stop-color="#FD1D1D"/>
-      <stop offset="58%" stop-color="#E1306C"/>
-      <stop offset="74%" stop-color="#C13584"/>
-      <stop offset="90%" stop-color="#833AB4"/>
-      <stop offset="100%" stop-color="#405DE6"/>
+    <linearGradient id="mumio" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6D4AFF"/>
+      <stop offset="55%" stop-color="#4C3CC8"/>
+      <stop offset="100%" stop-color="#202460"/>
     </linearGradient>
   </defs>
-  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#ig)"/>
-  <rect x="16" y="16" width="32" height="32" rx="10" fill="none" stroke="#fff" stroke-width="4"/>
-  <circle cx="32" cy="32" r="8.5" fill="none" stroke="#fff" stroke-width="4"/>
-  <circle cx="42.6" cy="21.4" r="2.7" fill="#fff"/>
+
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#mumio)"/>
+
+  <!-- Konuşma balonu: gövde + kuyruk -->
+  <path d="M15 17h34a5 5 0 0 1 5 5v17a5 5 0 0 1-5 5H29l-8 7v-7h-6a5 5 0 0 1-5-5V22a5 5 0 0 1 5-5z"
+        fill="#ffffff"/>
+
+  <!-- Kıvılcım (AI) -->
+  <path d="M26 22l2.1 5.9 5.9 2.1-5.9 2.1L26 38l-2.1-5.9-5.9-2.1 5.9-2.1z" fill="#6D4AFF"/>
+
+  <!-- İki nokta: yazıyor -->
+  <circle cx="41.5" cy="30" r="2.6" fill="#6D4AFF"/>
+  <circle cx="48.5" cy="30" r="2.6" fill="#6D4AFF"/>
 </svg>

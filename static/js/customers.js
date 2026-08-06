@@ -1,5 +1,5 @@
 /* =====================================================
-   InstaAgent · Customers sayfası
+   Mumio · Customers sayfası
    Sol: müşteri listesi (sayfalı) — Sağ: sipariş geçmişi (sayfalı)
 ===================================================== */
 

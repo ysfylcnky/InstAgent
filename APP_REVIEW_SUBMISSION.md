@@ -1,4 +1,4 @@
-# InstaAgent — Meta App Review Submission Metinleri
+# Mumio — Meta App Review Submission Metinleri
 
 Bu dosyadaki bloklar Meta App Dashboard'daki ilgili alanlara **birebir
 kopyala-yapıştır** içindir. Türkçe açıklamalar `>` ile işaretli — panele
@@ -23,9 +23,9 @@ girilmez.
 PLATFORM: Web
 
 WHAT THE APP DOES
-InstaAgent is a B2B SaaS tool (Tech Provider) for online retailers in Turkey.
-A merchant connects their Instagram professional account to InstaAgent. When a
-customer sends a Direct Message to that account, InstaAgent automatically replies
+Mumio is a B2B SaaS tool (Tech Provider) for online retailers in Turkey.
+A merchant connects their Instagram professional account to Mumio. When a
+customer sends a Direct Message to that account, Mumio automatically replies
 in the customer's language, finds the requested item in the merchant's product
 catalog, clarifies colour and size, and records the order for the merchant.
 Because the app serves many independent merchants, each merchant's data is
@@ -106,6 +106,15 @@ STEP-BY-STEP TEST INSTRUCTIONS
    party's personal data. The product has not been sold to any merchant yet;
    this App Review is what allows us to start serving real merchants.
 
+NOTE ON THE APP NAME SHOWN DURING LOGIN
+The Instagram authorization screen displays our app as "ManagerN8n-IG" rather
+than "Mumio". This is not a different app. Meta auto-generates the Instagram App
+Name from the app's original name at creation time by appending "-IG", and the
+App Dashboard provides no field to change it afterwards; renaming the app in App
+Settings does not update it. Our app was initially created under a different
+name. The Instagram App ID shown in the authorization URL (1791047958932574) is
+the Instagram App ID of this same app.
+
 LANGUAGE NOTE
 The assistant and the dashboard are in Turkish because every merchant and every
 end customer is Turkish-speaking. English glosses for each on-screen label are
@@ -134,7 +143,7 @@ app secret and reject unsigned requests.
 > tenant'ını verme** — reviewer için ayrı bir demo tenant aç.
 
 ```
-InstaAgent merchant dashboard (web)
+Mumio merchant dashboard (web)
 URL:      https://ig.mumifashion.com/login
 Username: metareview@mumifashion.com
 Password: Meta.Test44
@@ -162,7 +171,7 @@ demonstrates the full flow end to end in the meantime.
 > **Alan:** "How will your app use instagram_business_basic?"
 
 ```
-InstaAgent is a multi-tenant SaaS product used by many independent merchants, so
+Mumio is a multi-tenant SaaS product used by many independent merchants, so
 it must know which Instagram professional account belongs to which merchant.
 
 We use instagram_business_basic for exactly one thing: immediately after a
@@ -191,7 +200,7 @@ and the connected account's username then appearing in the dashboard.
 > **Alan:** "How will your app use instagram_business_manage_messages?"
 
 ```
-This permission is the core function of the product: InstaAgent answers the
+This permission is the core function of the product: Mumio answers the
 Instagram Direct Messages that customers send to the merchant's professional
 account.
 
@@ -225,7 +234,7 @@ replying to customer DMs is the entire service.
 
 | # | Ekran | Altyazı (İngilizce) |
 |---|---|---|
-| 1 | `/login` → giriş | `Merchant signs in to the InstaAgent dashboard` |
+| 1 | `/login` → giriş | `Merchant signs in to the Mumio dashboard` |
 | 2 | Sidebar → Kurulum | `"Kurulum" = Setup — the merchant onboarding wizard` |
 | 3 | **Connect with Instagram** butonu (yakın plan) | `Business Login for Instagram — the login button` |
 | 4 | Instagram izin ekranı | `Requesting instagram_business_basic and instagram_business_manage_messages` |

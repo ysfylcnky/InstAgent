@@ -1,5 +1,5 @@
 /* =====================================================
-   InstaAgent · Settings sayfası
+   Mumio · Settings sayfası
    settings tablosu (DB-öncelikli, .env fallback) düzenleme
 ===================================================== */
 

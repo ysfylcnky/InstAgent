@@ -1,5 +1,5 @@
 /* =====================================================
-   InstaAgent · Reports sayfası
+   Mumio · Reports sayfası
    Tarih aralıklı özet (AI + sipariş + mesaj) + CSV export
 ===================================================== */
 

@@ -1,4 +1,4 @@
-# InstaAgent — App Review Hazırlık Değişiklikleri
+# Mumio — App Review Hazırlık Değişiklikleri
 
 Bu belge, Meta App Review öncesi eklenen kod uçlarını, dokunulan dosyaları,
 testleri ve panele girilecek URL'leri özetler. Tüm değişiklikler **additive** ve
@@ -133,7 +133,7 @@ Test durumu: **75 test geçiyor** (önceki 55 + 20 yeni). Çalıştırma:
 ---
 
 ## Meta App paneline girilecek URL'ler
-InstaAgent domain'i: **`ig.mumifashion.com`** (`api.mumifashion.com` WhatsAgent'a aittir).
+Mumio domain'i: **`ig.mumifashion.com`** (`api.mumifashion.com` WhatsAgent'a aittir).
 
 | Alan | URL |
 |---|---|

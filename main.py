@@ -853,9 +853,15 @@ async def logout():
 
 
 @app.get("/", response_class=HTMLResponse)
-@app.get("/instagent", response_class=HTMLResponse)
+@app.get("/mumio", response_class=HTMLResponse)
+@app.get("/instagent", response_class=HTMLResponse)  # eski alias — geriye dönük
 async def landing_page(request: Request):
-    """Tanıtım (landing) sayfası. ig.mumifashion.com/instagent altında sunulur."""
+    """Tanıtım (landing) sayfası. Kök adres ve /mumio altında sunulur.
+
+    `/instagent` eski alias olarak korunur (paylaşılmış bağlantılar kırılmasın),
+    ama tanıtımda artık kullanılmaz: Meta marka kuralları app/ürün adında
+    "Insta" gibi kendi markalarına benzer ifadelere izin vermiyor.
+    """
     return templates.TemplateResponse(request=request, name="landing.html", context={})
 
 

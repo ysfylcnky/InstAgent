@@ -1,7 +1,7 @@
-# InstaAgent — Reviewer Test Instructions (Meta App Review)
+# Mumio — Reviewer Test Instructions (Meta App Review)
 
 ## What the app does
-InstaAgent is an AI sales assistant for Instagram-based e-commerce stores. When a
+Mumio is an AI sales assistant for Instagram-based e-commerce stores. When a
 customer sends a Direct Message to a connected Instagram **Business** account, the
 app automatically replies, finds the requested product in the store's catalog
 (via İKAS), clarifies color/size, and creates the order on the merchant's behalf.
@@ -28,7 +28,7 @@ beyond the messaging conversation and the connected account's basic identity.
 ## Step-by-step test flow
 
 1. **Connect the account (already done for review).** The merchant connects their
-   Instagram Business account inside InstaAgent (OAuth). This exercises
+   Instagram Business account inside Mumio (OAuth). This exercises
    `instagram_business_basic` (reads account id + username to identify the store).
 
 2. **Send an incoming DM.** From a second Instagram account (or the reviewer's

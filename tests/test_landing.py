@@ -11,8 +11,10 @@ def test_landing_served(env):
     c = TestClient(main.app)
     r = c.get("/")
     assert r.status_code == 200
-    assert "InstaAgent" in r.text
-    assert c.get("/instagent").status_code == 200
+    assert "Mumio" in r.text
+    assert "InstaAgent" not in r.text          # marka değişimi geri dönmesin
+    assert c.get("/mumio").status_code == 200
+    assert c.get("/instagent").status_code == 200   # eski alias korunuyor
 
 
 def test_healthz(env):

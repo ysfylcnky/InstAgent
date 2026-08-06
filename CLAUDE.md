@@ -1,6 +1,6 @@
 # CLAUDE.md — Read this first, read only what it sends you to
 
-You are working in **InstaAgent**. This file is the single entry point for any
+You are working in **Mumio**. This file is the single entry point for any
 Claude Code session. Do **not** scan the repository tree, and do **not** open
 `Services/` file-by-file to orient yourself. Read this file, pick the task type,
 open the one doc it points to, then open only the specific source files that doc
@@ -10,7 +10,7 @@ names. The docs describe **why** and **where**; the source holds the **what**.
 
 ## 1. What this project is
 
-InstaAgent is a **multi-tenant SaaS**: an AI sales assistant for Instagram DMs,
+Mumio is a **multi-tenant SaaS**: an AI sales assistant for Instagram DMs,
 built for the Turkish e-commerce market. A merchant (tenant) connects an
 Instagram **Business** account. When a customer sends a DM:
 

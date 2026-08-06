@@ -1,9 +1,9 @@
 ﻿/* =====================================================
-   InstaAgent · Command Center  (Aurora Dark)
+   Mumio · Command Center  (Aurora Dark)
 ===================================================== */
 
 const C = {
-    green:"#25D366", violet:"#8B7CFF", cyan:"#22D3EE",
+    green:"#22C55E", violet:"#8B7CFF", cyan:"#22D3EE",
     amber:"#FBBF24", pink:"#F472B6", red:"#FB7185",
     text:"#EAECF5", muted:"#8B92AB", faint:"#5A6178",
     grid:"rgba(255,255,255,.06)",
@@ -12,8 +12,8 @@ const C = {
 const SERIES_COLORS = [C.violet, C.cyan, C.green, C.amber, C.pink, C.red];
 
 const AVATARS = [
-    ["#8B7CFF","#F472B6"], ["#25D366","#22D3EE"], ["#FBBF24","#FB7185"],
-    ["#22D3EE","#8B7CFF"], ["#F472B6","#FBBF24"], ["#25D366","#8B7CFF"],
+    ["#8B7CFF","#F472B6"], ["#22C55E","#22D3EE"], ["#FBBF24","#FB7185"],
+    ["#22D3EE","#8B7CFF"], ["#F472B6","#FBBF24"], ["#22C55E","#8B7CFF"],
 ];
 
 /* ---- global Chart.js dark defaults ---- */

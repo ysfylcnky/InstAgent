@@ -1,5 +1,5 @@
 /* =====================================================
-   InstaAgent · Conversations sayfası
+   Mumio · Conversations sayfası
    Sol: müşteri listesi (sayfalı) — Sağ: mesaj detayı (sayfalı)
 ===================================================== */
 

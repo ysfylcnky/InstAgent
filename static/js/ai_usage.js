@@ -1,10 +1,10 @@
 /* =====================================================
-   InstaAgent · AI Usage sayfası
+   Mumio · AI Usage sayfası
    usage_logs üzerinden model bazlı detaylı analiz
 ===================================================== */
 
 const C = {
-    green:"#25D366", violet:"#8B7CFF", cyan:"#22D3EE",
+    green:"#22C55E", violet:"#8B7CFF", cyan:"#22D3EE",
     amber:"#FBBF24", pink:"#F472B6", red:"#FB7185",
     text:"#EAECF5", muted:"#8B92AB", grid:"rgba(255,255,255,.06)"
 };

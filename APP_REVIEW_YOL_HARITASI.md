@@ -1,4 +1,4 @@
-# InstaAgent — Meta App Review Yol Haritası
+# Mumio — Meta App Review Yol Haritası
 
 **Durum özeti (5 Ağustos 2026):** Kod tarafı büyük ölçüde hazır. Zorunlu uçların
 hepsi mevcut ve canlıda: `/privacy`, `/terms`, `/webhook` (GET fail-closed
@@ -140,7 +140,7 @@ App Review → **Review your app settings** altında dördü de dolu olmalı:
 
 | Alan | Değer |
 |---|---|
-| App icon | 1024×1024 PNG — InstaAgent logosu |
+| App icon | 1024×1024 PNG — Mumio logosu |
 | Privacy Policy URL | `https://ig.mumifashion.com/privacy` |
 | App Category | *Business & Pages* (veya *Messaging*) |
 | Business Email | `info@mumifashion.com` |
@@ -163,7 +163,7 @@ Ayrıca **Instagram → API setup with Instagram login** altında:
 
 ## 🟠 K6 — Instagram Testers ekleme (adım adım)
 
-1. [developers.facebook.com/apps](https://developers.facebook.com/apps) → InstaAgent app'ini aç.
+1. [developers.facebook.com/apps](https://developers.facebook.com/apps) → Mumio app'ini aç.
 2. Sol menü → **App roles** → **Roles**.
 3. **Instagram Testers** bölümü → **Add people** (veya **Add Instagram Testers**).
 4. Test edilecek Instagram **professional/business** hesabının kullanıcı adını yaz → **Add**.
@@ -184,7 +184,7 @@ zorunlu**. Her izin için ayrı ayrı gösterilmeli.
 
 **Çekilecek akış (tek video yeter, iki izni de kapsar):**
 
-1. `ig.mumifashion.com/login` → demo hesapla giriş *(altyazı: "Merchant logs into InstaAgent")*
+1. `ig.mumifashion.com/login` → demo hesapla giriş *(altyazı: "Merchant logs into Mumio")*
 2. Kurulum → **Connect with Instagram** butonuna tıkla *(altyazı: "Business Login for Instagram — requests instagram_business_basic + instagram_business_manage_messages")*
 3. Instagram yetkilendirme ekranı → izinleri onayla
 4. Panelde bağlı hesabın kullanıcı adı görünür *(altyazı: "instagram_business_basic — app reads account ID and username to identify the merchant")*

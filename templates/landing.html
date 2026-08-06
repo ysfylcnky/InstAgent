@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>InstaAgent · Instagram Yapay Zeka Satış Asistanı</title>
-<meta name="description" content="InstaAgent, mağazanıza Instagram DM'den gelen her mesaja saniyeler içinde yanıt verir; paylaşılan post/reel'den ürünü bulur, doğru renk ve bedeni seçer, siparişi sizin adınıza alır.">
+<title>Mumio · Instagram Yapay Zeka Satış Asistanı</title>
+<meta name="description" content="Mumio, mağazanıza Instagram DM'den gelen her mesaja saniyeler içinde yanıt verir; paylaşılan post/reel'den ürünü bulur, doğru renk ve bedeni seçer, siparişi sizin adınıza alır.">
 <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
 <style>
 :root{
@@ -12,9 +12,9 @@
   --surface:#141024; --surface-2:#1b1533;
   --border:rgba(255,255,255,.08); --border-strong:rgba(255,255,255,.16);
   --text:#f5f3fb; --muted:#a7a2c4; --muted-2:#7d7899;
-  --violet:#a855f7; --pink:#e1306c; --orange:#f97316;
-  --grad:linear-gradient(135deg,#7c3aed 0%,#d946ef 48%,#f97316 100%);
-  --grad-dm:linear-gradient(135deg,#405de6 0%,#833ab4 55%,#c13584 100%);
+  --violet:#a855f7; --pink:#7c4dff; --orange:#1EA0E0;
+  --grad:linear-gradient(135deg,#7c3aed 0%,#5B45E0 48%,#1EA0E0 100%);
+  --grad-dm:linear-gradient(135deg,#3b34b8 0%,#6d4aff 55%,#5b45e0 100%);
   --radius:18px; --radius-sm:12px; --t:.25s ease;
   --maxw:1180px;
 }
@@ -34,8 +34,8 @@ body::before{
   content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
   background:
     radial-gradient(60% 50% at 78% 8%, rgba(124,58,237,.22), transparent 60%),
-    radial-gradient(50% 45% at 12% 20%, rgba(225,48,108,.16), transparent 60%),
-    radial-gradient(45% 40% at 60% 90%, rgba(249,115,22,.10), transparent 60%),
+    radial-gradient(50% 45% at 12% 20%, rgba(124,77,255,.16), transparent 60%),
+    radial-gradient(45% 40% at 60% 90%, rgba(30,160,224,.10), transparent 60%),
     linear-gradient(180deg,var(--bg),var(--bg-2));
 }
 
@@ -100,11 +100,11 @@ header.nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(12px);
 .dm-body{padding:20px 18px;display:flex;flex-direction:column;gap:12px;max-height:520px}
 .msg{max-width:80%;padding:11px 15px;border-radius:20px;font-size:14.5px;line-height:1.45;animation:pop .5s both}
 .in{align-self:flex-start;background:#241d3a;border-bottom-left-radius:6px}
-.out{align-self:flex-end;background:var(--grad-dm);color:#fff;border-bottom-right-radius:6px;box-shadow:0 6px 18px rgba(131,58,180,.3)}
+.out{align-self:flex-end;background:var(--grad-dm);color:#fff;border-bottom-right-radius:6px;box-shadow:0 6px 18px rgba(109,74,255,.3)}
 .reel{align-self:flex-start;width:150px;border-radius:16px;overflow:hidden;border:1px solid var(--border-strong);background:#241d3a}
 .reel .thumb{height:120px;background:
-    radial-gradient(circle at 30% 30%, rgba(249,115,22,.6), transparent 55%),
-    linear-gradient(135deg,#833ab4,#c13584 60%,#f97316);position:relative;display:grid;place-items:center}
+    radial-gradient(circle at 30% 30%, rgba(30,160,224,.6), transparent 55%),
+    linear-gradient(135deg,#6d4aff,#5b45e0 60%,#1EA0E0);position:relative;display:grid;place-items:center}
 .reel .thumb svg{width:34px;height:34px;color:#fff;filter:drop-shadow(0 2px 6px rgba(0,0,0,.4))}
 .reel .cap{padding:8px 10px;font-size:12px;color:var(--muted)}
 .reel .cap b{color:var(--text);display:block;font-size:12.5px}
@@ -172,7 +172,7 @@ section{padding:84px 0}
 .q.open .a{max-height:240px}
 
 /* CTA band */
-.cta-band{background:linear-gradient(135deg,rgba(124,58,237,.18),rgba(225,48,108,.14));
+.cta-band{background:linear-gradient(135deg,rgba(124,58,237,.18),rgba(124,77,255,.14));
   border:1px solid var(--border-strong);border-radius:26px;padding:56px;text-align:center;position:relative;overflow:hidden}
 .cta-band h2{font-size:34px;font-weight:800;letter-spacing:-1px;margin-bottom:12px}
 .cta-band p{color:var(--muted);font-size:17px;margin-bottom:28px}
@@ -220,9 +220,9 @@ footer{border-top:1px solid var(--border);padding:40px 0;color:var(--muted-2);fo
   <div class="wrap nav-inner">
     <a class="brand" href="/">
       <span class="logo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="6"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 15a2 2 0 0 1-2 2H8l-4 3.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/><path d="M10.4 8.1l.85 2.05 2.05.85-2.05.85-.85 2.05-.85-2.05-2.05-.85 2.05-.85z" fill="currentColor" stroke="none"/><circle cx="15.4" cy="11" r="1.05" fill="currentColor" stroke="none"/></svg>
       </span>
-      <span>InstaAgent<small>Instagram Yapay Zeka Satış Asistanı</small></span>
+      <span>Mumio<small>Instagram Yapay Zeka Satış Asistanı</small></span>
     </a>
     <nav class="nav-links">
       <a href="#ozellikler">Özellikler</a>
@@ -255,7 +255,7 @@ footer{border-top:1px solid var(--border);padding:40px 0;color:var(--muted-2);fo
     <div>
       <span class="badge"><span class="dot"></span>Instagram DM'de 7/24 otomatik satış</span>
       <h1>Müşteriniz DM atsın,<br><span class="grad-text">yapay zeka satışı kapatsın.</span></h1>
-      <p class="lead">InstaAgent, mağazanıza Instagram'dan gelen her mesaja saniyeler içinde yanıt verir; müşterinin paylaştığı post/reel'den ürünü bulur, doğru renk ve bedeni seçer, siparişi sizin adınıza alır. Siz uyurken bile satış devam eder.</p>
+      <p class="lead">Mumio, mağazanıza Instagram'dan gelen her mesaja saniyeler içinde yanıt verir; müşterinin paylaştığı post/reel'den ürünü bulur, doğru renk ve bedeni seçer, siparişi sizin adınıza alır. Siz uyurken bile satış devam eder.</p>
       <div class="hero-cta">
         <button class="btn btn-grad" data-open>14 Gün Ücretsiz Deneyin →</button>
         <a class="btn btn-ghost" href="#nasil-calisir">Nasıl Çalışır?</a>
@@ -413,9 +413,9 @@ footer{border-top:1px solid var(--border);padding:40px 0;color:var(--muted-2);fo
       <h2>Sık sorulan sorular</h2>
     </div>
     <div class="faq">
-      <div class="q"><button>InstaAgent hesabımın şifresini görür mü?<span class="plus">+</span></button><div class="a"><p>Hayır. Bağlantı Meta'nın resmî yetkilendirmesiyle yapılır; erişim anahtarınız şifreli saklanır ve yalnızca sizin mağazanız için kullanılır.</p></div></div>
+      <div class="q"><button>Mumio hesabımın şifresini görür mü?<span class="plus">+</span></button><div class="a"><p>Hayır. Bağlantı Meta'nın resmî yetkilendirmesiyle yapılır; erişim anahtarınız şifreli saklanır ve yalnızca sizin mağazanız için kullanılır.</p></div></div>
       <div class="q"><button>Kurulum ne kadar sürer?<span class="plus">+</span></button><div class="a"><p>Genellikle birkaç dakika. Instagram hesabınızı ve İKAS kataloğunuzu bağladıktan sonra sihirbaz gerisini halleder.</p></div></div>
-      <div class="q"><button>Müşteri paylaştığı gönderiden ürünü nasıl buluyor?<span class="plus">+</span></button><div class="a"><p>Müşteri bir post/reel paylaştığında InstaAgent açıklamadaki ürün adını çıkarır ve İKAS kataloğunuzda arayarak doğru ürünü eşleştirir.</p></div></div>
+      <div class="q"><button>Müşteri paylaştığı gönderiden ürünü nasıl buluyor?<span class="plus">+</span></button><div class="a"><p>Müşteri bir post/reel paylaştığında Mumio açıklamadaki ürün adını çıkarır ve İKAS kataloğunuzda arayarak doğru ürünü eşleştirir.</p></div></div>
       <div class="q"><button>Birden fazla mağazam var, tek panelden yönetebilir miyim?<span class="plus">+</span></button><div class="a"><p>Evet. Çok kiracılı mimaride her mağaza kendi hesabı, ayarları ve verileriyle tamamen izole çalışır. Kurumsal plan çoklu hesabı kapsar.</p></div></div>
       <div class="q"><button>Verilerim güvende mi?<span class="plus">+</span></button><div class="a"><p>Her tenant'ın konuşmaları, müşterileri ve sırları veritabanı seviyesinde izole ve şifrelidir; başka bir mağaza verilerinize erişemez.</p></div></div>
     </div>
@@ -437,9 +437,9 @@ footer{border-top:1px solid var(--border);padding:40px 0;color:var(--muted-2);fo
   <div class="wrap foot-inner">
     <div class="brand" style="font-size:16px">
       <span class="logo" style="width:32px;height:32px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="6"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/></svg></span>
-      <span>InstaAgent</span>
+      <span>Mumio</span>
     </div>
-    <div>© 2026 InstaAgent · Mumi Fashion. Tüm hakları saklıdır.</div>
+    <div>© 2026 Mumio · Mumi Fashion. Tüm hakları saklıdır.</div>
     <div style="display:flex;gap:18px;flex-wrap:wrap">
       <a href="/privacy" style="color:var(--muted)">Gizlilik</a>
       <a href="/terms" style="color:var(--muted)">Koşullar</a>
